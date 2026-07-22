@@ -1,5 +1,7 @@
 # fxyz-graph
 
+[![CI](https://github.com/fxyznetwork/fxyz-graph/actions/workflows/ci.yml/badge.svg)](https://github.com/fxyznetwork/fxyz-graph/actions/workflows/ci.yml)
+
 A headless, backend-agnostic graph-rendering stack: a shared identity/payload
 contract, a venue-agnostic algorithm registry, a force-directed layout +
 community-detection library, and a headless controller that drives a
