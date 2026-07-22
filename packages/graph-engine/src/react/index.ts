@@ -1,6 +1,6 @@
 /**
- * @fxyz/graph-engine/react — GraphPane, the one embeddable graph primitive
- * (DESIGN-V2 §4), plus its contract-tested interaction machines.
+ * @fxyz/graph-engine/react — GraphPane, the one embeddable graph primitive,
+ * plus its contract-tested interaction machines.
  */
 
 export { GraphPane, type GraphPaneProps, PaneViolation } from "./GraphPane";

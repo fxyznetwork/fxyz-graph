@@ -1,15 +1,15 @@
 /**
- * Live-layout truth laws (#1055).
+ * Live-layout truth, locked as tests.
  *
- * The FX walk defect: under a client sim (payload without server positions)
+ * The defect: under a client sim (payload without server positions)
  * the tap hit-index was built from payload coordinates — which don't exist —
  * so every tap missed, and `NvlBackend.isLayoutMoving()` returned true
- * FOREVER (layout-name stub), so settle could never be observed. Two laws
- * lock the fix:
+ * FOREVER (layout-name stub), so settle could never be observed. Two
+ * invariants lock the fix:
  *
- *  1. Motion truth: the adapter derives isLayoutMoving from the vendor's own
- *     onLayoutDone callback (the real lever, audit RC6) — moving from
- *     construction, settled on done, re-heated by new data.
+ *  1. Motion truth: the adapter derives isLayoutMoving from the renderer's
+ *     own onLayoutDone callback — moving from construction, settled on
+ *     done, re-heated by new data.
  *  2. Position truth: hit-testing reads the SAME position source the
  *     renderer draws from — payload under `free`, live backend positions
  *     under a sim (mergeLivePositions is the one join).
@@ -67,7 +67,7 @@ function makeBackend(
 	return { backend, captured };
 }
 
-describe("motion truth — isLayoutMoving rides the vendor onLayoutDone (#1055)", () => {
+describe("motion truth — isLayoutMoving rides the renderer's onLayoutDone", () => {
 	it("passes a callbacks object through the factory seam", () => {
 		const { captured } = makeBackend("d3Force");
 		expect(captured.callbacks).toBeDefined();
@@ -111,9 +111,10 @@ describe("motion truth — isLayoutMoving rides the vendor onLayoutDone (#1055)"
 		expect(backend.isLayoutMoving()).toBe(false);
 	});
 
-	it("quiescence fallback: settles when positions stop moving and the vendor never says done", () => {
-		// Prod-observed: NVL's d3Force path (alphaDecay 0) never emits
-		// onLayoutDone — motion truth must come from observed positions.
+	it("quiescence fallback: settles when positions stop moving and the renderer never says done", () => {
+		// Observed in practice: the renderer's d3Force path (alphaDecay 0)
+		// never emits onLayoutDone — motion truth must come from observed
+		// positions.
 		let positions = [{ id: "a", x: 0, y: 0 }];
 		const { backend } = makeBackend("d3Force", () =>
 			positions.map((p) => ({ ...p })),
@@ -142,8 +143,8 @@ describe("motion truth — isLayoutMoving rides the vendor onLayoutDone (#1055)"
 	});
 });
 
-describe("position truth — hit-testing reads the renderer's position source (#1055)", () => {
-	// The FX shape: contract nodes WITHOUT coordinates (client sim owns layout).
+describe("position truth — hit-testing reads the renderer's position source", () => {
+	// The shape under test: contract nodes WITHOUT coordinates (client sim owns layout).
 	const simNodes = [
 		{ id: "currency:USD", kind: "currency", label: "USD", provenance: "real" },
 		{ id: "currency:EUR", kind: "currency", label: "EUR", provenance: "real" },

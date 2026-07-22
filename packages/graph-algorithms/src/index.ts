@@ -26,8 +26,8 @@ import {
 
 /**
  * A registry preloaded with the built-in algorithms. The defaults carry no
- * `groundingConceptId`, so no `GroundingChecker` is required; pass one anyway
- * if you intend to also register ƒxyz-coined metrics.
+ * `guardKey`, so no `RegistrationGuard` is required; pass one anyway if you
+ * intend to also register guarded algorithms.
  */
 export function createDefaultRegistry(
 	options: RegistryOptions = {},

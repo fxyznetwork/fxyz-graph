@@ -1,15 +1,17 @@
 /**
  * @fxyz/graph-layout — public API.
  *
- * Layout + data-shaping helpers for a client-supplied graph dataset. The root
- * export is the shared data schema (SubstrateData / SubstrateNode /
- * SubstrateEdge); the runtime helpers live on subpaths:
+ * Layout + data-shaping helpers for a caller-supplied graph dataset. The root
+ * export is the shared in-memory graph schema (SubstrateData / SubstrateNode /
+ * SubstrateEdge — a generic nodes + edges + meta shape) plus a set of pure
+ * client-side lenses that recolour an already-loaded graph. The positioned
+ * landing-slice builder lives on a subpath:
  *
  *   import { buildLandingSlice } from '@fxyz/graph-layout/landing-substrate';
  */
 
-// Client-side graph lenses (SCOPE × FILTER × LENS, third axis). Pure functions
-// over an already-loaded graph — no query, orthogonal to scope.
+// Client-side graph lenses (recolour an already-loaded graph). Pure functions
+// over the in-context nodes + links — they need no extra data load.
 export {
 	COMMUNITY_PALETTE,
 	CORE_HEX,
@@ -25,25 +27,8 @@ export {
 	PERIPHERY_HEX,
 } from "./graph-lens";
 
-export {
-	formatGraphLimitCompact,
-	getPublicGraphFullMaxNodes,
-	getPublicGraphTierLimit,
-	PUBLIC_CONCEPT_ID_DENYLIST_PREFIXES,
-	PUBLIC_GRAPH_PUBLIC_LABELS,
-	PUBLIC_GRAPH_SENSITIVE_LABELS,
-	PUBLIC_GRAPH_SENSITIVE_WHERE,
-	PUBLIC_NON_SENSITIVE_COUNT_CYPHER,
-	type PublicGraphPublicLabel,
-	type PublicGraphSensitiveLabel,
-	type PublicGraphTier,
-	publicConceptCypherWhere,
-	resolvePublicGraphLimit,
-} from "./public-graph-limits";
+// Generic in-memory graph-data schema (nodes + edges + meta).
 export type {
-	CanonScope,
-	CanonStatus,
-	SourceEra,
 	SubstrateData,
 	SubstrateEdge,
 	SubstrateEdgeKind,

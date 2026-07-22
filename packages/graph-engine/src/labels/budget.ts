@@ -1,8 +1,8 @@
 /**
- * Budgeted labels (engine law 6): labels are OUR overlay — NVL's WebGL path
- * renders no captions (fair-run measured 2026-07-15), and on the canvas tier
+ * Budgeted labels: labels are OUR overlay — the renderer's WebGL path
+ * renders no captions, and on the canvas tier
  * the engine deliberately leaves native captions untriggered (passes `label`,
- * never `caption`; 3f96577cc) so there is exactly ONE label system. Per-frame
+ * never `caption`) so there is exactly ONE label system. Per-frame
  * label count is bounded by the lens budget, independent of graph size.
  */
 
@@ -14,12 +14,13 @@ import type { GraphNodeV1, MeasureKind } from "@fxyz/graph-contract";
  * biggest communities carry labels); default is degree-first with magnitude
  * fallback. Ref is the final tiebreak (stable across identical payloads).
  *
- * Named-first (#1071 direction 2, founder walk 2026-07-17): when a payload
+ * Named-first: when a payload
  * declares label quality, REAL names outrank synthesized fallbacks at any
- * measure — a wall of "Concept cluster" must never crowd exemplar-named
- * communities out of the budget. Within the generic pool, identical label
- * text renders at most twice (the third copy adds noise, not information).
- * Payloads without labelQuality are untouched (every node ranks as named).
+ * measure — a wall of generic labels like "Cluster 12" must never crowd
+ * exemplar-named communities out of the budget. Within the generic pool,
+ * identical label text renders at most twice (the third copy adds noise,
+ * not information). Payloads without labelQuality are untouched (every node
+ * ranks as named).
  */
 export function pickLabeledNodes(
 	nodes: GraphNodeV1[],

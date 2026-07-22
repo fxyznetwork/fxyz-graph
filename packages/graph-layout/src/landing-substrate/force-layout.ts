@@ -1,5 +1,5 @@
 /**
- * Force-directed 3D layout for the landing substrate.
+ * Force-directed 3D layout for the landing graph slice.
  *
  * Pure function — runs server-side at API time so the response carries
  * pre-computed positions. The R3F renderer reads the positions and applies
@@ -8,8 +8,8 @@
  * Algorithm:
  *   - 3D force simulation (`d3-force-3d`) with link, charge, center, and
  *     community-cohesion forces
- *   - Communities pull their members inward (cluster cohesion) so the
- *     "closed networks" reading on spine §1 is visually anchored
+ *   - Communities pull their members inward (cluster cohesion) so each cluster
+ *     reads as a distinct region
  *   - Inter-community edges still pull (when present) but at lower strength
  *     so subgraphs stay readable as separate
  *
@@ -29,13 +29,13 @@ import {
 	forceZ,
 } from "d3-force-3d";
 import type { SubstrateEdge, SubstrateNode } from "../types";
-import type { PositionedNode, StellarTone } from "./types";
+import type { PaletteTone, PositionedNode } from "./types";
 
 interface LayoutArgs {
 	nodes: SubstrateNode[];
 	edges: SubstrateEdge[];
 	nodeCommunity: Record<string, string>;
-	communityTones: Map<string, StellarTone>;
+	communityTones: Map<string, PaletteTone>;
 	/** World-space radius — how far nodes extend from origin. Default 28. */
 	radius?: number;
 	/** Force-simulation tick count. Default 300. Higher = more settled. */
@@ -158,7 +158,7 @@ export function runForceLayout({
 			);
 		}
 		const communityId = sn.communityId;
-		const tone = communityTones.get(communityId) ?? "florin";
+		const tone = communityTones.get(communityId) ?? "amber";
 		return {
 			...original,
 			x: sn.x,

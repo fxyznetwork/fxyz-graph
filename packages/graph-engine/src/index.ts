@@ -1,6 +1,7 @@
 /**
  * @fxyz/graph-engine — headless graph controller.
- * Laws before features; renderers are backends; identity is the contract's.
+ * Invariants before features; renderers are swappable backends; node identity
+ * comes from @fxyz/graph-contract.
  */
 
 export {
@@ -49,4 +50,3 @@ export {
 	sizeFromValue,
 	type StylePatch,
 } from "./lens/apply";
-export * from "./limits";

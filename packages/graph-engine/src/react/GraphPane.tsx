@@ -1,23 +1,25 @@
 /**
- * GraphPane — ONE embeddable graph primitive (DESIGN-V2 §4).
+ * GraphPane — ONE embeddable graph primitive.
  *
- * The React face of @fxyz/graph-engine: presets over one implementation,
- * replacing MiniGraphWidget / ChromelessMiniGraph / GraphDrawer / raw
- * UnifiedGraph call sites mount-by-mount (§7 drain). Laws enforced here:
+ * The React face of @fxyz/graph-engine: one implementation exposed through
+ * presets, replacing several earlier ad-hoc mount points. Behavior enforced
+ * here:
  *
- *  - preset ↔ payload.tier bind 1:1 (budget classes are server truth, law 4)
- *  - two-state overlay contract (overlay-machine.ts; codex 19)
- *  - one-tap law: tap = inspect · double = navigate · HOVER BANNED (law 2)
- *  - engine constructed ONCE per mount; data changes ingest incrementally
- *    (laws 8/9/14) — preset/backendFactory are frozen for the pane's life
- *  - labels are our budgeted overlay (law 6; NVL WebGL has no captions and the canvas tier's native captions are deliberately untriggered — one label system)
- *  - renderer picked from the measured 500-crossing, upgraded via LIVE
- *    setRenderer (fair-run A5) — no folklore constants (law 11)
+ *  - preset ↔ payload.tier bind 1:1 (budget classes are server truth)
+ *  - two-state overlay contract (overlay-machine.ts)
+ *  - one-tap model: tap = inspect · double = navigate · HOVER BANNED
+ *  - engine constructed ONCE per mount; data changes ingest incrementally —
+ *    preset/backendFactory are frozen for the pane's life
+ *  - labels are our budgeted overlay (the renderer's WebGL tier has no
+ *    captions and the canvas tier's native captions are deliberately
+ *    untriggered — one label system)
+ *  - renderer picked from the measured node-count crossing, upgraded via
+ *    LIVE setRenderer — no folklore constants
  *
  * Data is a prop (GraphPayloadV1) — the pane owns rendering + interaction,
  * never transport; consumers fetch via their surface's data path (GraphQL /
- * REST / static slice). Seed-driven fetching arrives with the P3 lens
- * runtime, on top of this component, not inside it.
+ * REST / static slice). Seed-driven fetching is expected to arrive as a
+ * future runtime layered on top of this component, not inside it.
  */
 
 import {
@@ -64,21 +66,21 @@ import {
 } from "./view";
 
 /**
- * Canvas → WebGL seam. Measured: canvas comfortable to ~1–2k (31fps @2k),
- * WEBGL_THRESHOLD=500 directionally right (fair benchmark addendum,
- * 2026-07-15) — crossing uses live setRenderer (A5), never reconstruction.
+ * Canvas → WebGL seam. Measured: canvas comfortable to ~1–2k nodes (31fps at
+ * 2k), so a threshold of 500 is directionally right — crossing uses live
+ * setRenderer, never a reconstruction.
  */
 const WEBGL_NODE_SEAM = 500;
 
-/** NVL renders node `size` as a DIAMETER (bundle: radius = size/2); 25 is the
- * vendor default for nodes no size rule touches. */
+/** The renderer draws node `size` as a DIAMETER (radius = size/2); 25 is the
+ * default for nodes no size rule touches. */
 const DEFAULT_NODE_SIZE = 25;
 
 /** Tap-acknowledgment camera ease (ms) — the click must move the world. */
 const TAP_TWEEN_MS = 320;
 
-/** Cursor-affordance hit-test cadence (law 10: ≥25ms, zoom parity — the
- * spatial grid bounds cost per query, this bounds queries per second). */
+/** Cursor-affordance hit-test cadence (≥25ms, zoom parity — the spatial grid
+ * bounds cost per query, this bounds queries per second). */
 const CURSOR_HIT_INTERVAL_MS = 25;
 
 /** prefers-reduced-motion at call time (SSR-safe): camera moves must land
@@ -100,13 +102,13 @@ export class PaneViolation extends Error {
 }
 
 export interface GraphPaneProps {
-	/** Budget class — binds 1:1 to payload.tier (DESIGN-V2 §4 table). */
+	/** Budget class — binds 1:1 to payload.tier. */
 	preset: Tier;
 	/** Contract payload; null = loading. The pane never fetches. */
 	payload: GraphPayloadV1 | null;
 	/**
-	 * Renderer backend, injected (law 12 seam): apps pass
-	 * createNvlBackendFactory((c, n, r, o) => new NVL(c, n, r, o)).
+	 * Renderer backend, injected: apps pass createNvlBackendFactory with a
+	 * constructor for the underlying renderer instance.
 	 */
 	backendFactory: BackendFactory;
 	/** Known lens id (contract registry) — applies its styleRules. */
@@ -115,20 +117,20 @@ export interface GraphPaneProps {
 	fullPage?: boolean;
 	onInspect?: (ref: GraphRef, node: GraphNodeV1) => void;
 	/**
-	 * Fires when a tap lands on empty canvas — the lawful deselect (product
-	 * audit 2026-07-20: without it, selection + consumer inspect cards were
-	 * sticky forever). On UNCONTROLLED surfaces (no selectedRefs prop) the
+	 * Fires when a tap lands on empty canvas — the lawful deselect (without
+	 * it, selection + consumer inspect cards were sticky forever). On
+	 * UNCONTROLLED surfaces (no selectedRefs prop) the
 	 * engine highlight is cleared before this fires; on CONTROLLED surfaces
 	 * the consumer owns selection — close the card here and let the state
 	 * loop clear (or deliberately keep) the highlight.
 	 */
 	onInspectClear?: () => void;
 	/**
-	 * One-tap EDGE inspect (Train 17): fires when a tap lands on an edge and
-	 * no node is under it (nodes win). Wiring this prop is what turns edge
-	 * hit-testing ON — the segment index is built lazily and only for
-	 * consumers that inspect edges (law 10's consumer gate). On uncontrolled
-	 * surfaces the tapped edge lights through the explicit-edge channel.
+	 * One-tap EDGE inspect: fires when a tap lands on an edge and no node is
+	 * under it (nodes win). Wiring this prop is what turns edge hit-testing
+	 * ON — the segment index is built lazily and only for consumers that
+	 * inspect edges (a consumer gate). On uncontrolled surfaces the tapped
+	 * edge lights through the explicit-edge channel.
 	 */
 	onInspectEdge?: (id: string, edge: GraphEdgeV1) => void;
 	onNavigate?: (ref: GraphRef, node: GraphNodeV1) => void;
@@ -140,21 +142,21 @@ export interface GraphPaneProps {
 	 */
 	minimap?: boolean;
 	/**
-	 * Member node drag (tm #1120): pointer-down ON a node + drag moves THAT
-	 * node (session-local pin, never written back — server positions stay
-	 * truth); drag on empty canvas pans, unchanged. Tap grammar untouched
-	 * (tap = inspect, double = navigate). Opt-in — workbench-class surfaces
-	 * where members untangle neighborhoods; guided public panes stay pan-only.
+	 * Member node drag: pointer-down ON a node + drag moves THAT node
+	 * (session-local pin, never written back — server positions stay truth);
+	 * drag on empty canvas pans, unchanged. Tap grammar untouched (tap =
+	 * inspect, double = navigate). Opt-in — workbench-class surfaces where
+	 * members untangle neighborhoods; guided public panes stay pan-only.
 	 */
 	dragNodes?: boolean;
 	/**
-	 * Controlled selection (id-keyed, law 13): the surface's mechanic for
+	 * Controlled selection (id-keyed): the surface's mechanic for
 	 * emphasizing a path/cycle — selection is the ONE lawful highlight (no
 	 * hover, no bespoke pulse). Tap-selection still works between changes.
 	 */
 	selectedRefs?: GraphRef[];
 	/**
-	 * Controlled explicit edge selection (#1097 routing-path hero): lights
+	 * Controlled explicit edge selection (routing-path hero): lights
 	 * EXACTLY these edge ids through the lawful highlight + salience channel,
 	 * independent of node-incident selection. Replaces the previous set on
 	 * change. For path/cycle surfaces (arbitrage, optimal route) that emphasise
@@ -240,10 +242,10 @@ export function GraphPane({
 	const hitRef = useRef<NodeHitIndex | null>(null);
 	// Edge index: lazy + consumer-gated (built on the first tap that needs it,
 	// only when onInspectEdge is wired) — invalidated whenever the node index
-	// refreshes so both always read the same position truth (#1055).
+	// refreshes so both always read the same position truth.
 	const edgeHitRef = useRef<EdgeHitIndex | null>(null);
 	const tapRef = useRef(new TapClassifier());
-	// #1136 forensics: freeze-surviving interaction breadcrumbs, OFF unless the
+	// Diagnostics: freeze-surviving interaction breadcrumbs, OFF unless the
 	// member armed `?paneTrace=1` — see pane-trace.ts.
 	const tracerRef = useRef<PaneTracer | null>(null);
 	if (tracerRef.current === null) tracerRef.current = createPaneTracer();
@@ -259,8 +261,8 @@ export function GraphPane({
 		grabDY: number;
 	} | null>(null);
 	const rendererRef = useRef<"canvas" | "webgl">("canvas");
-	// Live-layout truth (#1055): the resolved layout for this mount, and
-	// whether the current payload's sim has settled. `free` is born settled.
+	// Live-layout truth: the resolved layout for this mount, and whether the
+	// current payload's sim has settled. `free` is born settled.
 	const layoutRef = useRef<"free" | "d3Force">("free");
 	const settledRef = useRef(true);
 	// Tap-acknowledgment tween handle — any new gesture cancels it.
@@ -269,21 +271,21 @@ export function GraphPane({
 	// the setState to actual flips — never a per-move re-render.
 	const hoverHitRef = useRef(false);
 	const [hoverHit, setHoverHit] = useState(false);
-	// Law-10 time gate for the cursor-affordance hit-test.
+	// Time gate for the cursor-affordance hit-test.
 	const cursorHitAtRef = useRef(Number.NEGATIVE_INFINITY);
 
-	// Config identity (law 9): the values the engine was constructed with are
-	// frozen for the pane's life — a change is a violation, not a re-render.
+	// Config identity: the values the engine was constructed with are frozen
+	// for the pane's life — a change is a violation, not a re-render.
 	const frozen = useRef<{ preset: Tier; factory: BackendFactory } | null>(null);
 	if (frozen.current) {
 		if (frozen.current.preset !== preset) {
 			throw new PaneViolation(
-				`preset changed '${frozen.current.preset}' → '${preset}' mid-life — mount a new pane (law 9)`,
+				`preset changed '${frozen.current.preset}' → '${preset}' mid-life — mount a new pane`,
 			);
 		}
 		if (frozen.current.factory !== backendFactory) {
 			throw new PaneViolation(
-				"backendFactory changed mid-life — mount a new pane (law 9)",
+				"backendFactory changed mid-life — mount a new pane",
 			);
 		}
 	}
@@ -350,10 +352,10 @@ export function GraphPane({
 	}, []);
 
 	/**
-	 * Ease the camera so the tapped node lands center-frame (founder walk
-	 * 2026-07-17: a tap that only updates a side card reads as dead). Pan-only
-	 * — zoom is the member's own gesture; the transform is center-origin, so
-	 * "centered" is pan = node's world position. Any new gesture cancels it.
+	 * Ease the camera so the tapped node lands center-frame (a tap that only
+	 * updates a side card reads as dead). Pan-only — zoom is the member's own
+	 * gesture; the transform is center-origin, so "centered" is pan = node's
+	 * world position. Any new gesture cancels it.
 	 */
 	const tweenCameraTo = useCallback(
 		(worldX: number, worldY: number) => {
@@ -386,8 +388,8 @@ export function GraphPane({
 	);
 
 	/**
-	 * Rebuild the tap hit-index from the backend's CURRENT positions — the law
-	 * behind #1055: hit-testing reads the same position source the renderer
+	 * Rebuild the tap hit-index from the backend's CURRENT positions — the
+	 * principle that hit-testing reads the same position source the renderer
 	 * draws from. Under `free` the payload index never drifts; under a client
 	 * sim this runs at settle and for taps that land mid-sim.
 	 */
@@ -401,7 +403,7 @@ export function GraphPane({
 		edgeHitRef.current = null; // rebuilt lazily from the same fresh truth
 	}, []);
 
-	/** Build the edge index on demand (consumer-gated, law 10). */
+	/** Build the edge index on demand (consumer-gated). */
 	const ensureEdgeIndex = useCallback(() => {
 		if (edgeHitRef.current) return;
 		const engine = engineRef.current;
@@ -415,12 +417,12 @@ export function GraphPane({
 
 	// Ingest path — engine constructed lazily on FIRST payload (post-commit,
 	// so the canvas host exists), later payloads diff into the same engine.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: ingest deps are law-9 frozen
+	// biome-ignore lint/correctness/useExhaustiveDependencies: ingest deps are frozen by design (see the config-identity check above)
 	useEffect(() => {
 		if (!payload || ingestedRef.current === payload) return;
 		if (payload.tier !== preset) {
 			throw new PaneViolation(
-				`payload tier '${payload.tier}' does not match preset '${preset}' — tiers and presets bind 1:1 (law 4)`,
+				`payload tier '${payload.tier}' does not match preset '${preset}' — tiers and presets bind 1:1`,
 			);
 		}
 		if (payload.nodes.length === 0) {
@@ -441,20 +443,19 @@ export function GraphPane({
 				renderer: rendererRef.current,
 				layout,
 				disableTelemetry: true,
-				// Explicit zoom bounds (audit RC6 — real engine levers, never
-				// set before): without these the vendor's default cap clamps
-				// setZoomAndPan below the deterministic fit's target on large
-				// dpr-2 displays (founder 2026-07-19: overview cloud small in
-				// a big viewport). Matches zoomAround's own clamp range.
+				// Explicit zoom bounds (real engine levers, never left implicit):
+				// without these the renderer's default cap clamps setZoomAndPan
+				// below the deterministic fit's target on large dpr-2 displays
+				// (the overview cloud reads small in a big viewport otherwise).
+				// Matches zoomAround's own clamp range.
 				minZoom: 0.02,
 				maxZoom: 8,
-				// Client-sim mounts only (free ignores it): the vendor sim
-				// stops churning at the SAME deadline the settle policy adopts
-				// positions at — one 8s truth, not two clocks (RC6 lever,
-				// wired Train 20). relationshipThreshold and
+				// Client-sim mounts only (free ignores it): the simulation stops
+				// churning at the SAME deadline the settle policy adopts positions
+				// at — one 8s truth, not two clocks. relationshipThreshold and
 				// allowDynamicMinZoom stay DELIBERATELY unset: the first only
-				// gates native rel captions (banned — labels are our overlay,
-				// law 6); the second would fight the explicit minZoom above.
+				// gates native rel captions (banned — labels are our overlay);
+				// the second would fight the explicit minZoom above.
 				layoutTimeLimit: SETTLE_DEADLINE_MS,
 			});
 			engineRef.current = engine;
@@ -463,7 +464,7 @@ export function GraphPane({
 			rendererRef.current === "canvas" &&
 			payload.nodes.length > WEBGL_NODE_SEAM
 		) {
-			engine.backend.setRenderer("webgl"); // live crossing (A5)
+			engine.backend.setRenderer("webgl"); // live crossing
 			rendererRef.current = "webgl";
 		}
 		engine.ingest(payload);
@@ -483,7 +484,7 @@ export function GraphPane({
 	// lands (ingest re-adds nodes). Declared after the ingest effect so the
 	// engine exists by the time this runs on a payload commit. Centering on
 	// the first selected ref makes a controlled jump (saved view / ?focusRef=)
-	// land the target in frame — same acknowledgment law as the tap.
+	// land the target in frame — same acknowledgment behavior as the tap.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: payload is a deliberate re-apply trigger
 	useEffect(() => {
 		const engine = engineRef.current;
@@ -502,10 +503,10 @@ export function GraphPane({
 		}
 	}, [selectedRefs, payload]);
 
-	// Controlled explicit edge selection (#1097) — re-applied when the ids
-	// change or a new payload lands (ingest re-adds edges). Independent of node
-	// selection; the routing-path hero lights an edge SET through the same
-	// lawful salience channel.
+	// Controlled explicit edge selection — re-applied when the ids change or a
+	// new payload lands (ingest re-adds edges). Independent of node selection;
+	// the routing-path hero lights an edge SET through the same lawful
+	// salience channel.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: payload is a deliberate re-apply trigger
 	useEffect(() => {
 		const engine = engineRef.current;
@@ -513,7 +514,7 @@ export function GraphPane({
 		engine.selectEdges(selectedEdgeIds);
 	}, [selectedEdgeIds, payload]);
 
-	// Live lens switch (law 14): a lens change re-styles through the engine's
+	// Live lens switch: a lens change re-styles through the engine's
 	// incremental applyLens — never a reconstruction, never a re-ingest. The
 	// ingest path applies the CURRENT lens on payload commit; this effect only
 	// fires on lens identity changes afterward.
@@ -526,26 +527,25 @@ export function GraphPane({
 	}, [lens]);
 
 	// Settle watcher: polls the backend's motion flag per rAF, once per
-	// ingested payload. ALWAYS on for client-sim mounts (#1055 — settle is when
-	// the hit index + label overlay adopt the sim's real positions and the
-	// camera re-syncs); pure opt-in reporting under `free`. One state write per
-	// ingest — never a per-frame setState (audit RC5 class).
+	// ingested payload. ALWAYS on for client-sim mounts (settle is when the
+	// hit index + label overlay adopt the sim's real positions and the camera
+	// re-syncs); pure opt-in reporting under `free`. One state write per
+	// ingest — never a per-frame setState.
 	//
-	// CHURN IMMUNITY (prod walk 2026-07-21, the second #1072 defect): the
-	// watcher's lifetime must be per-INGEST, not per-render. With onSettled/
-	// syncView/refreshHitIndex in the deps, any consumer re-render with a
-	// fresh callback identity (fx lab + workbench both re-render around a
-	// ticking clock) tore the effect down and RESET the deadline clock — the
-	// 8s adoption became unreachable on exactly the surfaces that needed it,
-	// while ε-quiescence kept "working" because the backend's motion flag
-	// survives effect restarts. Callbacks are therefore read through a
-	// per-render ref and the effect keys on the payload alone.
-	// PAYLOAD-IDENTITY IMMUNITY (the third #1072 defect, fx lens): consumers
-	// that hand the pane a fresh payload OBJECT each render (same content, new
-	// reference — the fx bundle pattern) restarted the watcher through a
-	// [payload] dep just like the callback churn did. The watcher therefore
-	// keys on the payload's CONTENT identity (contract cacheKey) — a re-render
-	// with the same cacheKey continues the same settle session.
+	// CHURN IMMUNITY: the watcher's lifetime must be per-INGEST, not
+	// per-render. With onSettled/syncView/refreshHitIndex in the deps, any
+	// consumer re-render with a fresh callback identity (some consumer
+	// surfaces re-render around a ticking clock) tore the effect down and
+	// RESET the deadline clock — the 8s adoption became unreachable on
+	// exactly the surfaces that needed it, while ε-quiescence kept "working"
+	// because the backend's motion flag survives effect restarts. Callbacks
+	// are therefore read through a per-render ref and the effect keys on the
+	// payload alone.
+	// PAYLOAD-IDENTITY IMMUNITY: consumers that hand the pane a fresh payload
+	// OBJECT each render (same content, new reference) restarted the watcher
+	// through a [payload] dep just like the callback churn did. The watcher
+	// therefore keys on the payload's CONTENT identity (contract cacheKey) —
+	// a re-render with the same cacheKey continues the same settle session.
 	const settleCallbacksRef = useRef({ onSettled, syncView, refreshHitIndex });
 	settleCallbacksRef.current = { onSettled, syncView, refreshHitIndex };
 	const settleKey = payload ? payload.cacheKey : null;
@@ -558,9 +558,9 @@ export function GraphPane({
 		const start = performance.now();
 		let raf = 0;
 		let stopped = false;
-		// #1072 bounded settle: micro-jitter under alphaDecay 0 can hold
-		// ε-quiescence off for ~90s; the settle-policy machine adopts positions
-		// at the deadline and lets true quiescence land one final correction.
+		// Bounded settle: micro-jitter under alphaDecay 0 can hold ε-quiescence
+		// off for a long tail; the settle-policy machine adopts positions at the
+		// deadline and lets true quiescence land one final correction.
 		let adopted = false;
 		const tick = () => {
 			if (stopped) return;
@@ -635,10 +635,10 @@ export function GraphPane({
 		},
 	});
 
-	// ---- pointer interaction (hand-wired: NVL has zero touch events) -------
+	// ---- pointer interaction (hand-wired: the renderer has zero touch events) -------
 
-	/** The backend's LIVE transform as a PaneView (#1055 — hit-testing and
-	 *  drag math read the renderer's truth, never a stale state snapshot). */
+	/** The backend's LIVE transform as a PaneView (hit-testing and drag math
+	 *  read the renderer's truth, never a stale state snapshot). */
 	const liveHitView = useCallback((): PaneView => {
 		const backend = engineRef.current?.backend;
 		if (backend) {
@@ -667,9 +667,9 @@ export function GraphPane({
 			const x = e.clientX - rect.left;
 			const y = e.clientY - rect.top;
 			tapRef.current.down(x, y);
-			// Node-drag arm (tm #1120): ONE bounded spatial-grid query per press
-			// (law-10 shape — same cost class as the tap hit-test). The gesture
-			// only becomes a node drag if the classifier later crosses slop.
+			// Node-drag arm: ONE bounded spatial-grid query per press (same cost
+			// class as the tap hit-test). The gesture only becomes a node drag
+			// if the classifier later crosses slop.
 			dragNodeRef.current = null;
 			if (dragNodes && overlay === "active") {
 				if (!settledRef.current) refreshHitIndex();
@@ -697,12 +697,12 @@ export function GraphPane({
 			const pointers = pointersRef.current;
 			const prev = pointers.get(e.pointerId);
 			if (!prev) {
-				// No pointer down: cursor affordance only (founder walk
-				// 2026-07-17 — nothing signalled clickability). A bounded
-				// spatial-grid query per move; NO styling, NO state machine —
-				// law 2's hover-highlight ban is untouched. Law 10's time half:
-				// ≥25ms between queries (zoom parity) — the spatial grid bounds
-				// cost per query, this bounds queries per second.
+				// No pointer down: cursor affordance only (otherwise nothing
+				// signals clickability). A bounded spatial-grid query per move;
+				// NO styling, NO state machine — the hover-highlight ban is
+				// untouched. Time half of the same bound: ≥25ms between queries
+				// (zoom parity) — the spatial grid bounds cost per query, this
+				// bounds queries per second.
 				if (overlay !== "active") return;
 				const t = performance.now();
 				if (t - cursorHitAtRef.current < CURSOR_HIT_INTERVAL_MS) return;
@@ -744,9 +744,9 @@ export function GraphPane({
 			if (tapRef.current.isDragging()) {
 				const drag = dragNodeRef.current;
 				if (drag) {
-					// Node drag (tm #1120): the camera holds still; the node rides
-					// the pointer in world space. Labels/minimap re-join on release
-					// (per-move livePositions would re-rank 10k labels per event).
+					// Node drag: the camera holds still; the node rides the pointer
+					// in world space. Labels/minimap re-join on release (per-move
+					// livePositions would re-rank thousands of labels per event).
 					const wpt = screenToWorld(
 						liveHitView(),
 						e.clientX - rect.left,
@@ -781,9 +781,9 @@ export function GraphPane({
 				? tr.phase(`up ${outcome ?? "none"} ${Math.round(x)},${Math.round(y)}`)
 				: null;
 			try {
-				// Node-drag release (tm #1120): the moved truth re-enters every
-				// consumer of positions — hit index (edge index invalidates with it)
-				// and the livePositions join labels + minimap read.
+				// Node-drag release: the moved truth re-enters every consumer of
+				// positions — hit index (edge index invalidates with it) and the
+				// livePositions join labels + minimap read.
 				const dragged = dragNodeRef.current;
 				dragNodeRef.current = null;
 				if (outcome === "drag" && dragged) {
@@ -794,20 +794,20 @@ export function GraphPane({
 				}
 				if (outcome !== "tap" && outcome !== "double") return;
 
-				// Activation tap: consumed, never a select (codex 19).
+				// Activation tap: consumed, never a select.
 				if (dispatchOverlay("tap")) return;
 
-				// #1055: taps read the renderer's truth — refresh the index for
-				// mid-sim taps, and hit-test against the backend's LIVE transform
-				// (never a stale state snapshot).
+				// Taps read the renderer's truth — refresh the index for mid-sim
+				// taps, and hit-test against the backend's LIVE transform (never a
+				// stale state snapshot).
 				if (!settledRef.current) refreshHitIndex();
 				const hitView = liveHitView();
 				const node = hitRef.current?.hit(hitView, x, y) ?? null;
 				if (tr?.enabled) tr.crumb(`hit ${node ? node.id : "none"}`);
 				if (!node) {
-					// Edge inspect (Train 17): only when no node is under the tap,
-					// and only for surfaces that wired an edge consumer — the
-					// segment index doesn't exist otherwise (law 10 gate).
+					// Edge inspect: only when no node is under the tap, and only
+					// for surfaces that wired an edge consumer — the
+					// segment index doesn't exist otherwise (consumer gate).
 					if (onInspectEdge && outcome === "tap") {
 						const edgeIdxEnd = tr?.enabled ? tr.phase("edgeIndex+hit") : null;
 						ensureEdgeIndex();
@@ -869,7 +869,7 @@ export function GraphPane({
 		dragNodeRef.current = null;
 	}, []);
 
-	// ---- labels (budgeted overlay, law 6) -----------------------------------
+	// ---- labels (budgeted overlay) -------------------------------------------
 	const labelNodes = useMemo<LabelNode[]>(() => {
 		if (!payload) return [];
 		const spec = lens ? getLensSpec(lens) : null;
@@ -880,16 +880,17 @@ export function GraphPane({
 			budget,
 			spec?.labelRankMeasure,
 		);
-		// Client-sim mounts: labels attach to the settled sim positions (#1055
-		// sibling defect — payload nodes carry no coordinates under a sim, so
-		// without this join the overlay rendered zero labels).
+		// Client-sim mounts: labels attach to the settled sim positions
+		// (payload nodes carry no coordinates under a sim, so without this
+		// join the overlay rendered zero labels).
 		const positioned = livePositions
 			? mergeLivePositions(picked, livePositions)
 			: picked;
 		// Anchor radius mirrors the lens's own size rule (same sizeFromValue
 		// math the style pipeline pushes to the backend) so labels sit at the
-		// node's rendered EDGE, not its center (the "floating labels" walk
-		// finding). NVL size is a diameter — radius is half.
+		// node's rendered EDGE, not its center (otherwise labels visibly
+		// float off their nodes). The renderer's size is a diameter — radius
+		// is half.
 		const sizeRule = spec?.styleRules.find(
 			(r) => r.channel === "size" && !r.source.startsWith("prop:"),
 		);
@@ -906,7 +907,7 @@ export function GraphPane({
 	}, [payload, lens, preset, livePositions]);
 
 	// Minimap reads the FULL positioned node field (never the label-budget
-	// subset) — same live-position join as labels/hit-testing (law 13).
+	// subset) — same live-position join as labels/hit-testing.
 	const minimapNodes = useMemo<GraphNodeV1[]>(() => {
 		if (!minimap || !payload) return [];
 		return livePositions

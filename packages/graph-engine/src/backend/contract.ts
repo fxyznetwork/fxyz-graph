@@ -1,11 +1,11 @@
 /**
- * The renderer backend contract (DESIGN-V2 §3; NVL-UNDERUSE-AUDIT §5).
+ * The renderer backend contract.
  *
- * This is NVL's observable API surface abstracted into a seam, so a renderer
- * swap (sigma / cosmos / custom — the P4 founder gate) is a backend change,
- * never another integration rewrite (engine law 12). Contract tests run
- * against THIS interface, not against `@neo4j-nvl` imports; backend-stub
- * keeps the seam honest.
+ * A graph-visualization library's observable API surface abstracted into a
+ * seam, so a renderer swap (sigma / cosmos / a custom canvas) is a backend
+ * change, never another integration rewrite. Contract tests run against THIS
+ * interface, not against any specific renderer; the stub backend keeps the
+ * seam honest.
  */
 
 export interface BackendNode {
@@ -27,16 +27,16 @@ export interface BackendConstructOptions {
 	container: unknown;
 	renderer: "canvas" | "webgl";
 	/**
-	 * Default is `free` + server positions (engine law 5 / audit RC1); client
-	 * sims are an explicit small-graph opt-in via the layout policy.
+	 * Default is `free` + server positions; client sims are an explicit
+	 * small-graph opt-in via the layout policy.
 	 */
 	layout: "free" | "d3Force" | "forceDirected";
 	/**
 	 * Literal `true` — telemetry is disabled at every backend construction
-	 * site, at the TYPE level (engine law 7).
+	 * site, at the TYPE level.
 	 */
 	disableTelemetry: true;
-	/** Real engine levers the 2024 adapter never set (audit RC6). */
+	/** Optional renderer levers. */
 	minZoom?: number;
 	maxZoom?: number;
 	layoutTimeLimit?: number;
@@ -54,14 +54,13 @@ export interface GraphBackend {
 		positions: Array<{ id: string; x: number; y: number }>,
 		animate?: boolean,
 	): void;
-	/** Incremental upsert — there is NO setData; law 8 forbids reconstruction. */
+	/** Incremental upsert — there is NO setData; reconstruction is forbidden. */
 	addAndUpdateElementsInGraph(nodes: BackendNode[], rels: BackendRel[]): void;
 	/**
-	 * Pin ops (tm #1120 — member drag). Under `free` layout setNodePositions is
-	 * already authoritative; the pin flag matters under sim layouts, where an
-	 * unpinned node gets yanked back by the force pass. Optional: a backend
-	 * without a sim concept may omit them (NVL 1.2.0 has both — verified in
-	 * the bundle: pinNode → nodes.update([{id, pinned:true}])).
+	 * Pin ops (member drag). Under `free` layout setNodePositions is already
+	 * authoritative; the pin flag matters under sim layouts, where an unpinned
+	 * node gets yanked back by the force pass. Optional: a backend without a sim
+	 * concept may omit them.
 	 */
 	pinNode?(id: string): void;
 	unPinNode?(id: string): void;
@@ -70,9 +69,9 @@ export interface GraphBackend {
 	getSelectedNodeIds(): string[];
 	setSelectedNodeIds(ids: string[]): void;
 	/**
-	 * Incident-edge half of the ONE lawful highlight (law 13, #1081): the
-	 * engine pushes the selected node's incident edge ids so the neighborhood
-	 * lights with the ring. Same delta semantics as setSelectedNodeIds.
+	 * Incident-edge half of the ONE highlight: the engine pushes the selected
+	 * node's incident edge ids so the neighborhood lights with the ring. Same
+	 * delta semantics as setSelectedNodeIds.
 	 */
 	setSelectedRelIds(ids: string[]): void;
 	deselectAll(): void;
@@ -80,7 +79,7 @@ export interface GraphBackend {
 	getScale(): number;
 	getPan(): { x: number; y: number };
 	fit(nodeIds?: string[], animated?: boolean): void;
-	/** LIVE on NVL 1.2.0 (fair-run addendum A5 — the #791 no-op is stale). */
+	/** Live renderer switch (canvas ↔ webgl) without reconstruction. */
 	setRenderer(renderer: "canvas" | "webgl"): void;
 	isLayoutMoving(): boolean;
 	destroy(): void;
@@ -89,11 +88,11 @@ export interface GraphBackend {
 export type BackendFactory = (options: BackendConstructOptions) => GraphBackend;
 
 export class BackendViolation extends Error {
-	readonly law: string;
-	constructor(law: string, message: string) {
-		super(`[${law}] ${message}`);
+	readonly rule: string;
+	constructor(rule: string, message: string) {
+		super(`[${rule}] ${message}`);
 		this.name = "BackendViolation";
-		this.law = law;
+		this.rule = rule;
 	}
 }
 
@@ -106,7 +105,7 @@ export function assertTelemetryDisabled(
 ): void {
 	if ((options as { disableTelemetry: boolean }).disableTelemetry !== true) {
 		throw new BackendViolation(
-			"law-7",
+			"telemetry",
 			"backend constructed without disableTelemetry:true",
 		);
 	}

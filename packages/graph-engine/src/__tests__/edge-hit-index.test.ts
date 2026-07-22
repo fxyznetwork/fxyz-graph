@@ -1,7 +1,7 @@
 /**
- * Edge hit-testing laws (Train 17 — gap audit 2026-07-21 #1: corridors and
- * route legs were uninspectable; an unindexed fallback would reintroduce
- * RC4's linear scan).
+ * Edge hit-testing behavior: corridors and route legs must stay
+ * inspectable, and an unindexed fallback must never reintroduce
+ * a linear scan.
  */
 
 import type { GraphEdgeV1, GraphNodeV1 } from "@fxyz/graph-contract";
@@ -58,7 +58,7 @@ describe("pointSegmentDistance2", () => {
 });
 
 describe("SegmentGrid", () => {
-	it("finds a long diagonal from a mid-span query cell (law 10 bound)", () => {
+	it("finds a long diagonal from a mid-span query cell", () => {
 		const diagonal = seg("d", 0, 0, 1000, 1000);
 		const grid = new SegmentGrid([diagonal]);
 		expect(grid.size).toBe(1);

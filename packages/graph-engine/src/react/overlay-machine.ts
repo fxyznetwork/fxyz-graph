@@ -1,5 +1,5 @@
 /**
- * The two-state overlay contract as a PURE machine (DESIGN-V2 §4; codex 19).
+ * The two-state overlay contract as a PURE machine.
  *
  * Preview  — pointer-events constrained, zoom off, the pane never captures
  *            page scroll. The FIRST tap activates only: it is consumed (no
@@ -11,7 +11,8 @@
  * Full-page surfaces (workbench / atlas presets) have NO Preview state: they
  * are born Active and exit events are ignored.
  *
- * Kept renderer-free and React-free so the contract is testable as law.
+ * Kept renderer-free and React-free so the contract is independently
+ * testable.
  */
 
 import type { Tier } from "@fxyz/graph-contract";
@@ -29,13 +30,13 @@ export interface OverlayDecision {
 	state: OverlayState;
 	/**
 	 * True when the overlay consumed the event — the activation tap NEVER
-	 * doubles as select/navigate (codex 19: the activation tap and the
-	 * inspect tap are never the same event).
+	 * doubles as select/navigate (the activation tap and the inspect tap are
+	 * never the same event).
 	 */
 	consumed: boolean;
 }
 
-/** Full-page presets have no Preview state (DESIGN-V2 §4). */
+/** Full-page presets have no Preview state. */
 export function isFullPagePreset(preset: Tier): boolean {
 	return preset === "workbench" || preset === "atlas";
 }

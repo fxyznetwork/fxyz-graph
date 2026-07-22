@@ -1,12 +1,12 @@
 /**
- * Pointer-gesture classifier for the one-tap law (engine law 2 / REPORT §5):
+ * Pointer-gesture classifier for the one-tap rule:
  * tap = inspect · double-tap = navigate · drag = pan. HOVER IS A BANNED
- * CLASS on graph canvases (founder-tested, killed twice) — this module has
- * no hover concept on purpose.
+ * CLASS on graph canvases (deliberately excluded after repeated testing) —
+ * this module has no hover concept on purpose.
  *
- * NVL ships ZERO touch events in any version (mechanics bank), so pointer
- * handling is hand-wired at the pane layer; this classifier is the shared,
- * clock-injectable core so the law is testable without a DOM.
+ * The renderer ships ZERO touch events in any version, so pointer handling
+ * is hand-wired at the pane layer; this classifier is the shared,
+ * clock-injectable core so the rule is testable without a DOM.
  *
  * Double-tap semantics: the first tap fires immediately (inspect stays
  * snappy — no 300ms hold-back); a second tap within the window ALSO fires

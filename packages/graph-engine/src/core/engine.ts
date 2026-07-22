@@ -1,13 +1,12 @@
 /**
- * The headless controller (DESIGN-V2 §3 core/).
+ * The headless controller.
  *
  * One backend instance per engine, constructed ONCE — a data change never
- * reconstructs it (law 8), a lens/filter change never reconstructs it
- * (law 14, the FX-lens/#971 lesson), and the config is frozen at construction
- * (law 9). Ingest is contract-payloads-only with defense-in-depth
- * re-validation, positions flow id-keyed into the PositionStore and the
- * backend under `free`, and the camera fits exactly once on first data-ready
- * (settle is known under free — the 150s auto-refit class is dead).
+ * reconstructs it, a lens/filter change never reconstructs it, and the config
+ * is frozen at construction. Ingest is contract-payloads-only with
+ * defense-in-depth re-validation, positions flow id-keyed into the
+ * PositionStore and the backend under `free`, and the camera fits exactly once
+ * on first data-ready.
  */
 
 import {
@@ -55,11 +54,11 @@ const DID_PATTERN = /\bdid:[a-z0-9]+:/i;
 const EMAIL_PATTERN = /[^\s@]+@[^\s@]+\.[a-z]{2,}/i;
 
 export class EngineViolation extends Error {
-	readonly law: string;
-	constructor(law: string, message: string) {
-		super(`[${law}] ${message}`);
+	readonly rule: string;
+	constructor(rule: string, message: string) {
+		super(`[${rule}] ${message}`);
 		this.name = "EngineViolation";
-		this.law = law;
+		this.rule = rule;
 	}
 }
 
@@ -85,10 +84,10 @@ export class GraphEngine {
 		GraphRef,
 		GraphPayloadV1["nodes"][number]
 	>();
-	/** ref → incident edge ids (#1081) — rebuilt per ingest with the node map. */
+	/** ref → incident edge ids — rebuilt per ingest with the node map. */
 	private incidentEdges = new Map<GraphRef, string[]>();
 	/**
-	 * Session-local drag overrides (tm #1120, law 13 id-keyed): ref → world
+	 * Session-local drag overrides (id-keyed): ref → world
 	 * position a member dragged the node to. Server positions stay the truth —
 	 * overrides are re-applied AFTER every ingest (so a pin survives lens
 	 * flips and data refreshes) and are never written back to the server.
@@ -100,8 +99,8 @@ export class GraphEngine {
 		options: BackendConstructOptions,
 		deps: EngineDeps = {},
 	) {
-		// Law 9 — stable config identity: the options object is frozen; a
-		// mid-life mutation (the per-render reinit trigger class) throws.
+		// Stable config identity: the options object is frozen; a mid-life
+		// mutation (the per-render reinit trigger class) throws.
 		this.options = Object.freeze({ ...options });
 		this.layoutPolicy = deps.layoutPolicy ?? DEFAULT_LAYOUT_POLICY;
 		this.budgets = deps.budgets ?? DEFAULT_TIER_BUDGETS;
@@ -118,52 +117,52 @@ export class GraphEngine {
 
 	/**
 	 * Contract payloads only, incremental always. Throws EngineViolation on
-	 * law breaches — the engine never silently slices, scatters, or sanitizes.
+	 * rule breaches — the engine never silently slices, scatters, or sanitizes.
 	 */
 	ingest(payload: GraphPayloadV1): void {
 		if (this.phase === "destroyed") {
-			throw new EngineViolation("law-8", "ingest after destroy");
+			throw new EngineViolation("lifecycle", "ingest after destroy");
 		}
-		// Law 15 — versioned payload contract.
+		// Versioned payload contract.
 		if (payload.version !== 1) {
 			throw new EngineViolation(
-				"law-15",
+				"contract",
 				`unknown payload version '${String(payload.version)}'`,
 			);
 		}
 		if (!TIER_SET.has(payload.tier)) {
-			throw new EngineViolation("law-15", `unknown tier '${payload.tier}'`);
+			throw new EngineViolation("contract", `unknown tier '${payload.tier}'`);
 		}
-		// Law 4 — budgets are enforced server-side; an over-budget payload is a
-		// server bug surfaced LOUD, never a silent client slice.
+		// Budgets are enforced server-side; an over-budget payload is a server
+		// bug surfaced LOUD, never a silent client slice.
 		const budget = this.budgets[payload.tier].maxNodes.value;
 		if (payload.nodes.length > budget) {
 			throw new EngineViolation(
-				"law-4",
+				"budget",
 				`payload of ${payload.nodes.length} nodes exceeds the '${payload.tier}' budget (${budget}) — cap server-side; a client-side slice firing is a failure, not a safety net`,
 			);
 		}
-		// Law 5 — layout policy consistency.
+		// Layout policy consistency.
 		const resolved = resolveLayout(this.layoutPolicy, payload);
 		if (resolved === "free" && this.options.layout !== "free") {
 			throw new EngineViolation(
-				"law-5",
+				"positions",
 				"payload carries server positions but the backend was constructed with a client sim — construct with layout:'free'",
 			);
 		}
-		// Laws 3/17 — defense in depth behind the serializer choke point.
+		// Defense in depth behind the serializer choke point.
 		for (const node of payload.nodes) {
 			if (DID_PATTERN.test(node.label) || EMAIL_PATTERN.test(node.label)) {
 				throw new EngineViolation(
-					"law-3-pii",
-					`PII pattern in label of '${node.id}' — upstream serializer bypassed?`,
+					"pii",
+					`sensitive-data pattern in label of '${node.id}' — upstream serializer bypassed?`,
 				);
 			}
 			if (node.measures) {
 				for (const key of Object.keys(node.measures)) {
 					if (!MEASURE_SET.has(key)) {
 						throw new EngineViolation(
-							"law-17",
+							"confidential",
 							`unknown measure '${key}' on '${node.id}'`,
 						);
 					}
@@ -172,9 +171,9 @@ export class GraphEngine {
 		}
 
 		// Map contract → backend shapes (GraphRef strings ARE the backend ids).
-		// `label`, NOT `caption`: labels are OUR budgeted overlay (law 6) — a
-		// caption key would trigger NVL's own canvas-tier caption renderer and
-		// give two competing label systems (live canary finding, 2026-07-16).
+		// `label`, NOT `caption`: labels are OUR budgeted overlay — a caption key
+		// would trigger a renderer's own caption path and give two competing
+		// label systems.
 		const backendNodes: BackendNode[] = payload.nodes.map((n) => ({
 			id: n.id,
 			...(n.x !== undefined && { x: n.x }),
@@ -185,7 +184,7 @@ export class GraphEngine {
 		}));
 		// Edges recede, nodes speak: subdued themeable color (resolved at the
 		// backend boundary) + weight-scaled width, so a dense summary tier reads
-		// as structure instead of arrowhead spaghetti (founder walk 2026-07-17).
+		// as structure instead of arrowhead spaghetti.
 		let maxWeight = 0;
 		for (const e of payload.edges) {
 			if (typeof e.weight === "number" && e.weight > maxWeight) {
@@ -205,10 +204,10 @@ export class GraphEngine {
 					: 1,
 		}));
 
-		// Law 8 — incremental only: remove-then-upsert via the salvaged nucleus.
+		// Incremental only: remove-then-upsert.
 		applyDataUpdate(this.backend, backendNodes, backendRels);
 
-		// Law 13 — id-keyed positions join across tiers/fetches by ref.
+		// Id-keyed positions join across tiers/fetches by ref.
 		if (payload.positionsIncluded) {
 			const positions: PositionMap = {};
 			for (const n of payload.nodes) {
@@ -235,11 +234,11 @@ export class GraphEngine {
 			}
 		}
 
-		// Member drag overrides outrank the server push above (tm #1120): a
-		// re-ingest (data refresh, expand) must not snap a pinned node back.
-		// Overrides for refs absent from this payload stay parked — the ref may
-		// return with the next fetch. Sim layouts rely on the vendor pinned
-		// flag instead (kept nodes survive the incremental diff un-removed).
+		// Member drag overrides outrank the server push above: a re-ingest
+		// (data refresh, expand) must not snap a pinned node back. Overrides for
+		// refs absent from this payload stay parked — the ref may return with the
+		// next fetch. Sim layouts rely on the backend's pinned flag instead (kept
+		// nodes survive the incremental diff un-removed).
 		if (payload.positionsIncluded && this.positionOverrides.size > 0) {
 			const kept: Array<{ id: GraphRef; x: number; y: number }> = [];
 			for (const [ref, pos] of this.positionOverrides) {
@@ -255,10 +254,10 @@ export class GraphEngine {
 		}
 		this.ingestCount += 1;
 
-		// Camera law — ONE fit on first data-ready; never a refit scheduler.
-		// Server-positioned payloads fit deterministically through the verified
-		// transform model; the vendor fit stays only for sims, where world
-		// positions don't exist yet at ingest.
+		// ONE fit on first data-ready; never a refit scheduler. Server-positioned
+		// payloads fit deterministically through the verified transform model; the
+		// backend's own fit stays only for sims, where world positions don't exist
+		// yet at ingest.
 		if (!this.fittedOnce && payload.nodes.length > 0) {
 			const fitted =
 				payload.positionsIncluded === true && this.fitServerPositions(payload);
@@ -268,14 +267,13 @@ export class GraphEngine {
 	}
 
 	/**
-	 * Deterministic dpr-honest fit for server-positioned payloads. The vendor
-	 * fit() under-zooms ~2× on dpr-2 displays (prod-observed 2026-07-18: the
-	 * compact #1080 overview cloud filled ~40% of the viewport height with the
-	 * rest empty), so when world positions are known the camera is computed
-	 * from the pane's verified transform model instead:
+	 * Deterministic dpr-honest fit for server-positioned payloads. A backend's
+	 * own fit() can under-zoom ~2× on dpr-2 displays, so when world positions
+	 * are known the camera is computed from the pane's verified transform model
+	 * instead:
 	 *   css = (zoom/dpr)·(world − pan) + cssSize/2
 	 * ⇒ zoom = cssScale·dpr with cssScale filling the container minus label
-	 * padding, pan = world bbox center. Falls back to the vendor fit when the
+	 * padding, pan = world bbox center. Falls back to the backend fit when the
 	 * container is unmeasurable (headless engines, jsdom without layout).
 	 */
 	private fitServerPositions(payload: GraphPayloadV1): boolean {
@@ -330,9 +328,9 @@ export class GraphEngine {
 	}
 
 	/**
-	 * Lens/filter deltas are INCREMENTAL (law 14 + RC5): compute patches, diff
-	 * against the previous patch map, re-push only the changed refs. Never
-	 * reconstructs the backend, never re-pushes the full set.
+	 * Lens/filter deltas are INCREMENTAL: compute patches, diff against the
+	 * previous patch map, re-push only the changed refs. Never reconstructs the
+	 * backend, never re-pushes the full set.
 	 */
 	applyLens(rules: StyleRule[]): GraphRef[] {
 		const nodes = [...this.lastPayloadNodes.values()];
@@ -361,9 +359,9 @@ export class GraphEngine {
 	select(refs: GraphRef[]): void {
 		this.selection.select(refs);
 		this.backend.setSelectedNodeIds(refs);
-		// #1081 — the neighborhood lights with the ring: incident edges of the
-		// selected refs ride the selection push (still the ONE lawful highlight,
-		// law 13 — no hover, no bespoke pulse).
+		// The neighborhood lights with the ring: incident edges of the selected
+		// refs ride the selection push (still the ONE highlight — no hover, no
+		// bespoke pulse).
 		const incident = new Set<string>();
 		for (const ref of refs) {
 			const edges = this.incidentEdges.get(ref);
@@ -375,9 +373,9 @@ export class GraphEngine {
 	}
 
 	/**
-	 * Explicit edge-set selection (#1097 — the routing-path hero), independent
-	 * of node-incident selection: lights EXACTLY these edge ids through the same
-	 * lawful highlight + salience channel (backend.setSelectedRelIds), leaving
+	 * Explicit edge-set selection (e.g. a routing path), independent of
+	 * node-incident selection: lights EXACTLY these edge ids through the same
+	 * highlight + salience channel (backend.setSelectedRelIds), leaving
 	 * node selection untouched. setSelectedRelIds is a full-set replace, so each
 	 * call replaces the previous explicit edge set (delta-pushed, never a
 	 * reconstruction). deselectAll() clears it.
@@ -393,13 +391,13 @@ export class GraphEngine {
 	}
 
 	/**
-	 * Member drag (tm #1120): move a node to a session-local world position
-	 * and pin it there. Never reconstructs (law 8/14), never writes back to
-	 * the server — the override lives in this engine instance only.
+	 * Member drag: move a node to a session-local world position and pin it
+	 * there. Never reconstructs, never writes back to the server — the override
+	 * lives in this engine instance only.
 	 */
 	overrideNodePosition(ref: GraphRef, x: number, y: number): void {
 		if (this.phase === "destroyed") {
-			throw new EngineViolation("law-8", "position override after destroy");
+			throw new EngineViolation("lifecycle", "position override after destroy");
 		}
 		if (!Number.isFinite(x) || !Number.isFinite(y)) return;
 		this.positionOverrides.set(ref, { x, y });

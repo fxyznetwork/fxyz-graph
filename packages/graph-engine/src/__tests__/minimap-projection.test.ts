@@ -1,5 +1,5 @@
 /**
- * Minimap projection laws (Train 16 · consumer-wiring audit gap #1).
+ * Minimap projection, locked as tests.
  *
  * The minimap's world↔map math must be exact and involutive, and the
  * viewport rect must derive from the SAME center-origin transform the
@@ -75,7 +75,7 @@ describe("minimap projection", () => {
 		expect(tallSpanY).toBeCloseTo(MINIMAP_H - 12, 6);
 	});
 
-	it("jump clamp: letterbox presses land on the world edge, never in the void (tm #1132)", () => {
+	it("jump clamp: letterbox presses land on the world edge, never in the void", () => {
 		const p = fitWorldToMap({ minX: -500, minY: -250, maxX: 1500, maxY: 750 });
 		// A press at the map's extreme corner extrapolates past the world edge…
 		const outside = mapToWorld(p, 0, MINIMAP_H);
@@ -89,8 +89,8 @@ describe("minimap projection", () => {
 		expect(inside).toEqual({ x: 123.5, y: -77.25 });
 	});
 
-	it("drawn rect never goes sub-pixel at deep zoom — min 6×4, centered on the true rect (tm #1132)", () => {
-		// Workbench-scale world (~18.8k×12.6k) at a deep zoom showing 100×75
+	it("drawn rect never goes sub-pixel at deep zoom — min 6×4, centered on the true rect", () => {
+		// A large world (~18.8k×12.6k) at a deep zoom showing 100×75
 		// world units: the true map rect is <1px on both axes.
 		const p = fitWorldToMap({ minX: 0, minY: 0, maxX: 18000, maxY: 12000 });
 		const view: PaneView = {

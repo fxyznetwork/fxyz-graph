@@ -1,6 +1,6 @@
 /**
- * GraphPane interaction laws as contract tests (DESIGN-V2 §4; codex 19/20).
- * Pure machines — no DOM, no renderer: the laws hold independent of backend.
+ * GraphPane interaction behavior as contract tests.
+ * Pure machines — no DOM, no renderer: the behavior holds independent of backend.
  */
 
 import type { GraphNodeV1, Tier } from "@fxyz/graph-contract";
@@ -18,7 +18,7 @@ import {
 	zoomAround,
 } from "../react/view";
 
-describe("two-state overlay contract (codex 19)", () => {
+describe("two-state overlay contract", () => {
 	it("embedded panes are born Preview; full-page presets are born Active", () => {
 		const embedded: Tier[] = ["peek", "chip", "tile", "drawer", "panel"];
 		for (const preset of embedded) {
@@ -75,7 +75,7 @@ describe("two-state overlay contract (codex 19)", () => {
 	});
 });
 
-describe("one-tap gesture classifier (law 2 — hover is a banned class)", () => {
+describe("one-tap gesture classifier (hover is a banned class)", () => {
 	const mkClock = () => {
 		let t = 0;
 		return { now: () => t, tick: (ms: number) => (t += ms) };
@@ -144,8 +144,8 @@ describe("one-tap gesture classifier (law 2 — hover is a banned class)", () =>
 	});
 });
 
-describe("view math + tap-time hit-testing (law 10)", () => {
-	// NVL's bundle-verified transform (nvl.md fact 2): center-origin,
+describe("view math + tap-time hit-testing", () => {
+	// The renderer's bundle-verified transform: center-origin,
 	// subtractive pan, css scale = zoom/dpr.
 	const baseView = {
 		scale: 2,
@@ -156,7 +156,7 @@ describe("view math + tap-time hit-testing (law 10)", () => {
 		dpr: 2,
 	};
 
-	it("worldToScreen matches the NVL renderer model", () => {
+	it("worldToScreen matches the renderer model", () => {
 		// css_x = (scale/dpr)·(x − panX) + width/2 = 1·(10−40) + 400 = 370
 		const p = worldToScreen(baseView, 10, -3);
 		expect(p.x).toBeCloseTo(370);

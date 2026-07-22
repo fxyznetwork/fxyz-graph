@@ -1,11 +1,10 @@
 /**
- * THE LAW HARNESS (DESIGN-V2 §3): the 17 incident laws as acceptance tests.
- * Laws ship before features — a rewrite that regresses any of these is not a
- * rewrite, it is a repeat. Each law cites its lineage.
+ * The invariant harness: the engine's core invariants as acceptance tests.
+ * Invariants ship before features — a rewrite that regresses any of these is
+ * not a rewrite, it is a repeat.
  *
- * Laws whose FULL assertion needs a live surface (P2 canary) carry the
- * strongest unit-level slice testable now, marked in comments — never
- * silently narrowed.
+ * Invariants whose FULL assertion needs a live surface carry the strongest
+ * unit-level slice testable here — never silently narrowed.
  */
 
 import {
@@ -30,11 +29,6 @@ import {
 	resolveLayout,
 } from "../layout/policy";
 import { applyStyleRules, provenanceVisual } from "../lens/apply";
-import {
-	getPublicGraphFullMaxNodes,
-	PUBLIC_GRAPH_PUBLIC_LABELS,
-	PUBLIC_GRAPH_SENSITIVE_LABELS,
-} from "../limits";
 
 // ── shared fixtures ─────────────────────────────────────────────────────────
 
@@ -90,42 +84,24 @@ function makeEngine() {
 
 // ── the laws ────────────────────────────────────────────────────────────────
 
-describe("law 01 · allowlist, not denylist (2026-06 PII/leak incidents)", () => {
-	it("the public label allowlist is closed and excludes identity labels", () => {
-		expect(Array.isArray(PUBLIC_GRAPH_PUBLIC_LABELS)).toBe(true);
-		expect(PUBLIC_GRAPH_PUBLIC_LABELS.length).toBeGreaterThan(0);
-		for (const banned of ["Member", "Persona", "Wallet", "SocialHandle"]) {
-			expect(PUBLIC_GRAPH_PUBLIC_LABELS).not.toContain(banned);
-		}
-	});
-	it("sensitive labels are explicitly enumerated (the gate has teeth)", () => {
-		expect(PUBLIC_GRAPH_SENSITIVE_LABELS.length).toBeGreaterThan(0);
-	});
-});
-
-describe("law 02 · never-2M (the OOM scar; caps-last, never caps-first)", () => {
-	it("no configured cap approaches the forbidden 2,000,000 restore", () => {
-		expect(getPublicGraphFullMaxNodes(true)).toBeLessThanOrEqual(50_000);
-		expect(getPublicGraphFullMaxNodes(false)).toBeLessThanOrEqual(100_000);
+describe("budgets stay within safe ceilings", () => {
+	it("no tier budget approaches a runaway node count", () => {
 		for (const tier of Object.values(DEFAULT_TIER_BUDGETS)) {
-			expect(tier.maxNodes.value).toBeLessThan(2_000_000);
+			expect(tier.maxNodes.value).toBeLessThan(100_000);
 		}
-	});
-	it("anon FULL pins to the measured 10k budget (tm #751)", () => {
-		expect(getPublicGraphFullMaxNodes(true)).toBe(10_000);
 	});
 });
 
-describe("law 03 · PII gates are absolute (pii-rules.md)", () => {
+describe("sensitive-data gates are absolute", () => {
 	it("engine re-scans labels even behind the serializer (defense in depth)", () => {
 		const hostile = payload([node("EUR")]);
-		hostile.nodes[0] = { ...hostile.nodes[0], label: "did:privy:examplenode02" };
+		hostile.nodes[0] = { ...hostile.nodes[0], label: "did:example:examplenode02" };
 		const { engine } = makeEngine();
 		expect(() => engine.ingest(hostile)).toThrow(EngineViolation);
 	});
 });
 
-describe("law 04 · budgets enforced server-side; client slice = failure", () => {
+describe("budgets enforced server-side; client slice = failure", () => {
 	it("an over-budget payload throws loud instead of slicing", () => {
 		const tooMany = Array.from({ length: 61 }, (_, i) => node(`C${i}`, i, i));
 		const { engine } = makeEngine();
@@ -135,7 +111,7 @@ describe("law 04 · budgets enforced server-side; client slice = failure", () =>
 	});
 });
 
-describe("law 05 · server layout past the measured N (audit RC1)", () => {
+describe("server layout past the measured N", () => {
 	it("large payloads without positions are refused, never client-scattered", () => {
 		const big = {
 			positionsIncluded: false,
@@ -161,7 +137,7 @@ describe("law 05 · server layout past the measured N (audit RC1)", () => {
 	});
 });
 
-describe("law 06 · labels are a budgeted overlay (no NVL captions on WebGL; canvas natives untriggered — ONE label system)", () => {
+describe("labels are a budgeted overlay (ONE label system)", () => {
 	it("label selection is bounded by the budget, independent of N", () => {
 		const nodes = Array.from({ length: 500 }, (_, i) => node(`C${i}`, 0, 0, i));
 		const picked = pickLabeledNodes(nodes, 200);
@@ -173,8 +149,8 @@ describe("law 06 · labels are a budgeted overlay (no NVL captions on WebGL; can
 		expect(pickLabeledNodes(nodes, 10)).toEqual(pickLabeledNodes(nodes, 10));
 	});
 	it("labelRankMeasure re-ranks salience: count beats degree on community tiers", () => {
-		// The observed defect (2026-07-17 walk): a high-degree tiny community
-		// stole the label slot from an exemplar-named major.
+		// A high-degree tiny community must not steal the label slot from an
+		// exemplar-named major.
 		const major: GraphNodeV1 = {
 			...node("USD-major"),
 			measures: { degree: 2, count: 5000 },
@@ -205,17 +181,17 @@ describe("law 06 · labels are a budgeted overlay (no NVL captions on WebGL; can
 	});
 });
 
-describe("law 07 · telemetry disabled at every construction site", () => {
+describe("telemetry disabled at every construction site", () => {
 	it("a backend refuses construction with telemetry on", () => {
 		const evil = {
 			...OPTS,
 			disableTelemetry: false,
 		} as unknown as BackendConstructOptions;
-		expect(() => new StubBackend(evil)).toThrow(/law-7/);
+		expect(() => new StubBackend(evil)).toThrow(/telemetry/);
 	});
 });
 
-describe("law 08 · incremental only — data change never re-inits (audit nucleus, #791 class)", () => {
+describe("incremental only — data change never re-inits", () => {
 	it("two ingests → one construction, diff ops only", () => {
 		const { engine, stub } = makeEngine();
 		engine.ingest(payload([node("EUR", 1, 1), node("BRL", 2, 2)]));
@@ -229,7 +205,7 @@ describe("law 08 · incremental only — data change never re-inits (audit nucle
 	});
 });
 
-describe("law 09 · stable config identity (the per-render reinit class)", () => {
+describe("stable config identity (the per-render reinit class)", () => {
 	it("engine options are frozen — mid-life mutation throws", () => {
 		const { engine } = makeEngine();
 		expect(() => {
@@ -238,7 +214,7 @@ describe("law 09 · stable config identity (the per-render reinit class)", () =>
 	});
 });
 
-describe("law 10 · interaction budget (audit RC4 — the measured hover villain)", () => {
+describe("interaction budget", () => {
 	it("spatial queries touch only nearby cells, independent of N", () => {
 		const points = Array.from({ length: 10_000 }, (_, i) => ({
 			id: `p${i}`,
@@ -266,7 +242,7 @@ describe("law 10 · interaction budget (audit RC4 — the measured hover villain
 	});
 });
 
-describe("law 11 · no folklore constants — every threshold carries provenance", () => {
+describe("no folklore constants — every threshold carries provenance", () => {
 	it("every default budget has provenance + source; measured ⇒ dated", () => {
 		for (const [tier, budget] of Object.entries(DEFAULT_TIER_BUDGETS)) {
 			for (const n of [budget.maxNodes, budget.labelBudget]) {
@@ -285,9 +261,9 @@ describe("law 11 · no folklore constants — every threshold carries provenance
 	});
 });
 
-// law 12 · backend swappability — full scenario suite in backend-swap.test.ts
+// backend swappability — full scenario suite in backend-swap.test.ts
 
-describe("law 13 · one identity contract — positions join across payloads by ref", () => {
+describe("one identity contract — positions join across payloads by ref", () => {
 	it("a position computed under one payload joins another by GraphRef", () => {
 		const store = new PositionStore();
 		store.setMany({ "currency:EUR": { x: 10, y: 20 } });
@@ -296,7 +272,7 @@ describe("law 13 · one identity contract — positions join across payloads by 
 	});
 });
 
-describe("law 14 · one control layer — lens changes never reconstruct (the #971 class)", () => {
+describe("one control layer — lens changes never reconstruct", () => {
 	it("applyLens N times → zero new constructions, delta-bounded pushes", () => {
 		const { engine, stub } = makeEngine();
 		engine.ingest(payload([node("EUR", 1, 1, 5), node("BRL", 2, 2, 3)]));
@@ -309,10 +285,10 @@ describe("law 14 · one control layer — lens changes never reconstruct (the #9
 		expect(stub.countOps("addAndUpdate")).toBe(pushesBefore + 1);
 	});
 
-	it("falsification storm: the full interaction vocabulary against a live engine → exactly ONE construction, zero destroys (the RC8/#971 regression this rewrite exists to kill)", () => {
+	it("falsification storm: the full interaction vocabulary against a live engine → exactly ONE construction, zero destroys", () => {
 		const { engine, stub } = makeEngine();
-		// The storm mirrors what the FX fork used to do per keystroke: data
-		// swaps, lens flips, node + explicit-edge selection churn, deselects.
+		// The storm mirrors a demanding session: data swaps, lens flips, node +
+		// explicit-edge selection churn, deselects.
 		const a = payload([node("EUR", 1, 1, 5), node("BRL", 2, 2, 3)]);
 		engine.ingest(a);
 		for (let i = 0; i < 5; i += 1) {
@@ -331,7 +307,7 @@ describe("law 14 · one control layer — lens changes never reconstruct (the #9
 	});
 });
 
-describe("law 15 · explicit versioned payload contract", () => {
+describe("explicit versioned payload contract", () => {
 	it("rejects unknown versions and tiers", () => {
 		const { engine } = makeEngine();
 		const good = payload([node("EUR", 1, 1)]);
@@ -344,7 +320,7 @@ describe("law 15 · explicit versioned payload contract", () => {
 	});
 });
 
-describe("law 16 · provenance renders (a data-bearing lens shows real/illustrative)", () => {
+describe("provenance renders (a data-bearing lens shows real/illustrative)", () => {
 	it("illustrative data is visually distinct by construction", () => {
 		expect(provenanceVisual("illustrative").dashed).toBe(true);
 		expect(provenanceVisual("real").dashed).toBe(false);
@@ -358,7 +334,7 @@ describe("law 16 · provenance renders (a data-bearing lens shows real/illustrat
 	});
 });
 
-describe("law 17 · confidential-by-design (token-layer-distinction, absolute)", () => {
+describe("confidential-by-design (absolute)", () => {
 	it("a balance-shaped measure is refused at ingest even if upstream slipped", () => {
 		const p = payload([node("EUR", 1, 1)]);
 		(p.nodes[0].measures as Record<string, number>).balance = 999;
@@ -384,7 +360,7 @@ describe("edge fixtures stay honest", () => {
 	});
 });
 
-describe("law 18 · member drag is session-local (tm #1120)", () => {
+describe("member drag is session-local", () => {
 	it("override moves + pins with ZERO reconstruction, and survives a re-ingest", () => {
 		const { engine, stub } = makeEngine();
 		engine.ingest(payload([node("EUR", 10, 10), node("USD", 50, 50)]));
@@ -414,7 +390,7 @@ describe("law 18 · member drag is session-local (tm #1120)", () => {
 		expect(engine.overriddenPositions()).toEqual({});
 	});
 
-	it("non-finite drags are refused; overrides after destroy throw law-8", () => {
+	it("non-finite drags are refused; overrides after destroy throw", () => {
 		const { engine, stub } = makeEngine();
 		engine.ingest(payload([node("EUR", 10, 10)]));
 		const ref = makeRef("currency", "EUR");

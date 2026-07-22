@@ -1,36 +1,35 @@
 /**
- * The algorithm registry + the grounding guard.
+ * The algorithm registry + an optional registration guard.
  *
  * Registering an algorithm is how you add an analytic — there is no per-page
- * pipeline. The guard makes operator-hud-grounding a BOOT-TIME invariant: a
- * ƒxyz-coined metric (one carrying a `groundingConceptId`) cannot register
- * unless its :Concept is active. This kills the ungrounded-R0 / circle-
- * temperature class of defect structurally, instead of relying on a reviewer
- * to catch it.
+ * pipeline. The guard makes approval a registration-time invariant: an
+ * algorithm that declares a `guardKey` cannot register unless the guard
+ * approves that key. This lets you gate a class of algorithm (for example, a
+ * coined metric that must be signed off) structurally, instead of relying on a
+ * reviewer to catch it.
  *
- * The grounding check is INJECTED (a `GroundingChecker`) rather than querying
- * the graph here, so this package stays pure/dependency-light. At app boot the
- * checker is wired to the live canon; in tests it is a stub.
+ * The guard is INJECTED (a `RegistrationGuard`) rather than reaching into any
+ * external system here, so this package stays pure/dependency-light. In an app
+ * it is wired to whatever approves a key; in tests it is a stub.
  */
 
 import type { Algorithm, AlgorithmFamily } from "./types";
 
-/** Returns true iff the given :Concept id is active canon. */
-export type GroundingChecker = (conceptId: string) => boolean;
+/** Returns true iff the guard approves the given key. */
+export type RegistrationGuard = (guardKey: string) => boolean;
 
-/** Thrown when a coined metric registers without active-canon grounding. */
-export class GroundingError extends Error {
+/** Thrown when a guarded algorithm registers without approval. */
+export class RegistrationError extends Error {
 	constructor(
 		public readonly algorithmId: string,
-		public readonly conceptId: string,
+		public readonly guardKey: string,
 	) {
 		super(
-			`Algorithm "${algorithmId}" declares groundingConceptId "${conceptId}" ` +
-				`but that :Concept is not active canon (or no GroundingChecker was ` +
-				`provided). Per operator-hud-grounding, a ƒxyz-coined metric must be ` +
-				`grounded by an active :Concept before it can register.`,
+			`Algorithm "${algorithmId}" declares guardKey "${guardKey}" but the ` +
+				`registration guard did not approve it (or no RegistrationGuard was ` +
+				`provided). A guarded algorithm must be approved before it can register.`,
 		);
-		this.name = "GroundingError";
+		this.name = "RegistrationError";
 	}
 }
 
@@ -44,11 +43,11 @@ export class DuplicateAlgorithmError extends Error {
 
 export interface RegistryOptions {
 	/**
-	 * Verifies coined-metric grounding. When omitted, ANY algorithm carrying a
-	 * `groundingConceptId` fails to register (fail-closed) — a published
-	 * algorithm with no `groundingConceptId` always registers fine.
+	 * Approves guarded algorithms. When omitted, ANY algorithm carrying a
+	 * `guardKey` fails to register (fail-closed) — an algorithm with no
+	 * `guardKey` always registers fine.
 	 */
-	groundingChecker?: GroundingChecker;
+	registrationGuard?: RegistrationGuard;
 }
 
 /**
@@ -57,25 +56,24 @@ export interface RegistryOptions {
  */
 export class AlgorithmRegistry {
 	private readonly byId = new Map<string, Algorithm<never>>();
-	private readonly groundingChecker?: GroundingChecker;
+	private readonly registrationGuard?: RegistrationGuard;
 
 	constructor(options: RegistryOptions = {}) {
-		this.groundingChecker = options.groundingChecker;
+		this.registrationGuard = options.registrationGuard;
 	}
 
 	/**
-	 * Register one algorithm. Throws on duplicate id, or on an ungrounded
-	 * coined metric (the boot-time operator-hud-grounding invariant).
+	 * Register one algorithm. Throws on duplicate id, or on a guarded algorithm
+	 * the registration guard does not approve.
 	 */
 	register<P>(algorithm: Algorithm<P>): this {
 		if (this.byId.has(algorithm.id)) {
 			throw new DuplicateAlgorithmError(algorithm.id);
 		}
-		if (algorithm.groundingConceptId) {
-			const grounded =
-				this.groundingChecker?.(algorithm.groundingConceptId) ?? false;
-			if (!grounded) {
-				throw new GroundingError(algorithm.id, algorithm.groundingConceptId);
+		if (algorithm.guardKey) {
+			const approved = this.registrationGuard?.(algorithm.guardKey) ?? false;
+			if (!approved) {
+				throw new RegistrationError(algorithm.id, algorithm.guardKey);
 			}
 		}
 		this.byId.set(algorithm.id, algorithm as unknown as Algorithm<never>);

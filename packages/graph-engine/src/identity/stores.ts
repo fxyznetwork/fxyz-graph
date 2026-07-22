@@ -1,8 +1,8 @@
 /**
- * Id-keyed identity stores (engine law 13; audit RC7).
+ * Id-keyed identity stores.
  *
  * Positions and selection key by GraphRef — never array index, never React
- * state inside the canvas subtree (audit RC5 lane-7). Framework-free
+ * state inside the canvas subtree. Framework-free
  * subscribable stores so React later binds via useSyncExternalStore.
  */
 
@@ -34,7 +34,7 @@ export class PositionStore extends Subscribable {
 		return this.positions.get(ref);
 	}
 	/**
-	 * Law-13 join guarantee: a position computed under one tier/payload joins
+	 * Join guarantee: a position computed under one tier/payload joins
 	 * under another by ref — the store never re-keys.
 	 */
 	snapshot(): PositionMap {

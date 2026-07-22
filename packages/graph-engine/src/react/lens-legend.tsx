@@ -1,7 +1,6 @@
 /**
- * LensLegend — the color/size key every graph surface lacked (consumer-wiring
- * audit 2026-07-21, top gap #3: community palette and --fx-role-* accents
- * rendered with zero explanation).
+ * LensLegend — the color/size key every graph surface lacked (community
+ * palette and role accents were rendering with zero explanation).
  *
  * Presentational only: the CONTRACT declares what each encoding means
  * (LensSpec.legend); this component owns the swatch pixels. Role chips read

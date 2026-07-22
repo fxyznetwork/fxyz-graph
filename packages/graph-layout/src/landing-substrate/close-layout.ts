@@ -1,44 +1,30 @@
 /**
- * Deterministic 2D close layout for the landing NVL crossfade.
+ * Deterministic 2D close layout for a 3D→2D crossfade.
  *
- * Wave C (docs/audits/2026-06-10-landing-rebuild/close-v2.md §5 req 3 + 9):
- * the close's 2D positions must encode TOPOLOGY (adjacency-as-proximity —
- * hub-spoke stars must read as stars) while staying DETERMINISTIC (same
- * input → same output, no live physics at consume time), and the 3D→2D
- * crossfade must land on a shape that visibly descends from the 3D close.
+ * The 2D positions must encode TOPOLOGY (adjacency-as-proximity — hub-spoke
+ * stars must read as stars) while staying DETERMINISTIC (same input → same
+ * output, no live physics at consume time), and the crossfade must land on a
+ * shape that visibly descends from the 3D layout.
  *
- * How each requirement is met:
- *   - Continuity (req 9): the sim is INITIALIZED from the substrate 3D
- *     pass's (x, y) — the same projection the renderer crossfades from —
- *     so the relaxation reorganizes the shape the visitor is looking at
- *     instead of teleporting nodes into category discs.
- *   - Adjacency (req 3): a link force over the REAL slice edges pulls
- *     neighbors together; d3's default per-link strength (1/min-degree)
- *     lets hubs hold many short spokes without collapsing.
- *   - Density-as-information (req 4): a collision force sized by degree
- *     prevents overlap but does NOT normalize spacing — clusters stay
- *     dense, whitespace stays empty.
- *   - Determinism: fixed iteration count, run-to-completion synchronous
- *     tick loop, deterministic initial positions, and d3-force-3d's
- *     default seeded LCG random source (used only for coincident-point
- *     jiggle). Same slice in → identical positions out, across processes.
+ * How each property is met:
+ *   - Continuity: the sim is INITIALIZED from the 3D pass's (x, y) — the same
+ *     projection a renderer crossfades from — so the relaxation reorganizes the
+ *     shape already on screen instead of teleporting nodes into category discs.
+ *   - Adjacency: a link force over the real slice edges pulls neighbors
+ *     together; d3's default per-link strength (1/min-degree) lets hubs hold
+ *     many short spokes without collapsing.
+ *   - Density-as-information: a collision force sized by degree prevents overlap
+ *     but does NOT normalize spacing — clusters stay dense, whitespace stays empty.
+ *   - Determinism: fixed iteration count, run-to-completion synchronous tick
+ *     loop, deterministic initial positions, and d3-force-3d's default seeded
+ *     random source (used only for coincident-point jiggle). Same slice in →
+ *     identical positions out, across processes.
  *
- * Dust (degree-0) nodes are EXCLUDED from the sim entirely — the close
- * consumer dust-drops them anyway (#106). Their absence from the returned
- * map is the unambiguous "parked" signal (no close2d ⇒ dust).
+ * Degree-0 nodes are EXCLUDED from the sim entirely — their absence from the
+ * returned map is the unambiguous "isolated" signal (no close2d ⇒ excluded).
  *
- * Runs server-side in buildLandingSlice (same place as the 3D pass — the
- * route memoizes the slice for 60s, so the cost is amortized). Bounded:
- * fixed ticks, no async, no timers.
- *
- * Cost (measured 2026-06-11, live slice: 883 in-sim nodes / 990 links,
- * M-series): ~380ms at the 120-tick default (Barnes-Hut theta 1.2; was
- * ~1s at 240 ticks / theta 0.9 — hub-capture quality is identical, the
- * alphaDecay schedule anneals to the same floor either way). Over the
- * 300ms inline target, but the landing route serves the slice from a 60s
- * module memo with single-flight + stale-while-refresh — an expired memo
- * answers stale and rebuilds in the BACKGROUND, so this cost sits on the
- * cold start only, on top of a ~2.2s total build. Noted per Wave C spec.
+ * Runs server-side in buildLandingSlice (same place as the 3D pass). Bounded:
+ * fixed ticks, no async, no timers — cache the slice if you rebuild it often.
  */
 
 // d3-force-3d ships its own .d.ts so no @types/* needed
@@ -56,7 +42,7 @@ import type { PositionedNode } from "./types";
 interface CloseLayoutArgs {
 	/** Substrate-positioned nodes (output of the 3D pass — x/y seed the sim). */
 	nodes: PositionedNode[];
-	/** Real slice edges (Cypher + synthesized). Drive the link force. */
+	/** Slice edges (real + synthesized). Drive the link force. */
 	edges: SubstrateEdge[];
 	/**
 	 * Fixed tick count. Default 120 — the alphaDecay schedule anneals to the
@@ -82,7 +68,7 @@ interface CloseSimLink {
 }
 
 /**
- * Collision base radius in substrate world units. The 3D pass spreads the
+ * Collision base radius in layout world units. The 3D pass spreads the
  * slice over roughly ±70 world units; ~900 in-sim nodes at base ~1.0 keep
  * local overlap impossible while leaving the global density gradient intact.
  */

@@ -1,11 +1,10 @@
 /**
- * The venue resolver — this is the layer that ends "blocked."
+ * The venue resolver — the layer that ends "blocked."
  *
- * The old plan modeled heavy analytics as a BLOCKED state ("needs Memgraph
- * MAGE / locked-out GDS"). That was a category error: it conflated "the GDS
- * plugin isn't installed" with "this algorithm is impossible." Under this
- * architecture, where an algorithm runs is a DERIVED field chosen per-call from
- * the measured working-set size — never a capability gate.
+ * It is a category error to model heavy analytics as a BLOCKED state — that
+ * conflates "a particular server engine isn't installed" with "this algorithm
+ * is impossible." Here, where an algorithm runs is a DERIVED field chosen
+ * per-call from the measured working-set size — never a capability gate.
  *
  * `deriveVenue` picks from the venues an algorithm DECLARES it can run in,
  * honoring each venue's size envelope, and REFUSES out-of-envelope selections
@@ -28,16 +27,15 @@ export interface VenueDecision {
 
 /**
  * Default size envelopes, used only for venues an algorithm does not pin via
- * `maxWorkingSet`. These are conservative starting points; the NVL/working-set
- * ceiling is genuinely unmeasured (docs disagree 1k/5k/50k/100k), so these are
- * tuned once the /graph FX-lens measurement harness (tm #754) lands. The precompute and GDS
- * venues are unbounded here because they run server-side off the render path.
+ * `maxWorkingSet`. These are conservative starting points — tune them once you
+ * have measured your own render ceiling. The precompute and native venues are
+ * unbounded here because they run server-side, off the render path.
  */
 export const DEFAULT_VENUE_ENVELOPE: Record<Venue, number> = {
 	"client-ts": 5_000,
-	"server-cypher": 50_000,
+	"server-query": 50_000,
 	"precomputed-cron": Number.POSITIVE_INFINITY,
-	"server-gds": Number.POSITIVE_INFINITY,
+	"server-native": Number.POSITIVE_INFINITY,
 };
 
 /**
@@ -47,24 +45,23 @@ export const DEFAULT_VENUE_ENVELOPE: Record<Venue, number> = {
  */
 const VENUE_PREFERENCE: readonly Venue[] = [
 	"client-ts",
-	"server-cypher",
+	"server-query",
 	"precomputed-cron",
-	"server-gds",
+	"server-native",
 ];
 
 export interface DeriveVenueOptions {
 	/**
-	 * Venues currently AVAILABLE in this deployment. `server-gds` is declared by
-	 * algorithms but only becomes selectable once the GDS plugin is installed —
-	 * pass the live set here. Defaults to all venues except `server-gds`
-	 * (today's reality: NEO4J_PLUGINS=["apoc","n10s"]).
+	 * Venues currently AVAILABLE in this deployment. `server-native` is declared
+	 * by algorithms but only becomes selectable once that engine is available —
+	 * pass the live set here. Defaults to all venues except `server-native`.
 	 */
 	availableVenues?: readonly Venue[];
 }
 
 const DEFAULT_AVAILABLE: readonly Venue[] = [
 	"client-ts",
-	"server-cypher",
+	"server-query",
 	"precomputed-cron",
 ];
 

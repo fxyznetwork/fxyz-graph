@@ -1,14 +1,15 @@
 /**
- * Train 2026-07-18 — two engine-layer affordances, locked as tests:
+ * Two engine-layer affordances, locked as tests:
  *
- *  1. #1081 incident-edge emphasis: selecting a node lights its incident
- *     edges through the SAME lawful highlight channel (law 13) — the engine
+ *  1. Incident-edge emphasis: selecting a node lights its incident
+ *     edges through the SAME lawful highlight channel — the engine
  *     derives the edge set from payload adjacency and pushes rel `selected`
  *     deltas; nothing hovers, nothing pulses.
  *  2. Deterministic dpr-honest fit: server-positioned payloads fit through
  *     the verified transform model (css = (zoom/dpr)·(world − pan) + c/2)
- *     instead of the vendor fit, which under-zoomed ~2× on dpr-2 displays
- *     (prod walk 2026-07-18: the #1080 cloud filled ~40% of the viewport).
+ *     instead of the fallback fit, which previously under-zoomed ~2× on
+ *     dpr-2 displays and left the node cloud filling a small fraction of
+ *     the viewport.
  */
 
 import {
@@ -88,9 +89,9 @@ function makeEngine(container: unknown = null) {
 	return { engine, stub };
 }
 
-// ── #1081 incident-edge emphasis ────────────────────────────────────────────
+// ── incident-edge emphasis ───────────────────────────────────────────────────
 
-describe("#1081 · selection lights the incident edges (law 13)", () => {
+describe("selection lights the incident edges", () => {
 	const a = node("USD", 0, 0);
 	const b = node("EUR", 10, 0);
 	const c = node("JPY", 0, 10);
@@ -133,7 +134,7 @@ describe("#1081 · selection lights the incident edges (law 13)", () => {
 	});
 });
 
-describe("#1081 · NvlBackend pushes rel selected deltas (flips only)", () => {
+describe("NvlBackend pushes rel selected deltas (flips only)", () => {
 	function makeFakeNvl() {
 		const relPatches: Array<Record<string, unknown>> = [];
 		const instance: NvlLikeInstance = {
@@ -181,9 +182,9 @@ describe("#1081 · NvlBackend pushes rel selected deltas (flips only)", () => {
 	});
 });
 
-// ── #1097 selected-edge salience (NvlBackend) ────────────────────────────────
+// ── selected-edge salience (NvlBackend) ──────────────────────────────────────
 
-describe("#1097 · selected edges are salient, restored to subdued on deselect", () => {
+describe("selected edges are salient, restored to subdued on deselect", () => {
 	function makeFakeNvl() {
 		const relPatches: Array<Record<string, unknown>> = [];
 		const instance: NvlLikeInstance = {
@@ -230,7 +231,7 @@ describe("#1097 · selected edges are salient, restored to subdued on deselect",
 		expect(p.selected).toBe(true);
 		// bright, opaque — plainly distinct from the subdued 0.35-alpha base.
 		expect(p.color).toBe("rgba(174, 194, 248, 0.95)");
-		// clearly wider than the subdued base width (NVL further ×1.5's it).
+		// clearly wider than the subdued base width (the renderer further ×1.5's it).
 		expect(p.width).toBe(2.5);
 		expect(p.width as number).toBeGreaterThan(1);
 	});
@@ -279,9 +280,9 @@ describe("#1097 · selected edges are salient, restored to subdued on deselect",
 	});
 });
 
-// ── #1097 explicit edge-set selection (engine.selectEdges) ───────────────────
+// ── explicit edge-set selection (engine.selectEdges) ─────────────────────────
 
-describe("#1097 · engine.selectEdges — explicit edge-set salience", () => {
+describe("engine.selectEdges — explicit edge-set salience", () => {
 	const a = node("USD", 0, 0);
 	const b = node("EUR", 10, 0);
 	const c = node("JPY", 0, 10);
@@ -354,13 +355,13 @@ describe("deterministic fit · server positions fill the measured container", ()
 		expect(stub.getScale()).toBeCloseTo(1.5, 6); // MAX_FIT_CSS_SCALE
 	});
 
-	it("falls back to the vendor fit when the container is unmeasurable", () => {
+	it("falls back to the plain fit when the container is unmeasurable", () => {
 		const { engine, stub } = makeEngine(null);
 		engine.ingest(payload(spread));
 		expect(stub.countOps("fit")).toBe(1);
 	});
 
-	it("falls back to the vendor fit when positions are absent (sims)", () => {
+	it("falls back to the plain fit when positions are absent (sims)", () => {
 		const container = { clientWidth: 800, clientHeight: 600 };
 		let stub: StubBackend | undefined;
 		const engine = new GraphEngine(
@@ -378,7 +379,7 @@ describe("deterministic fit · server positions fill the measured container", ()
 		expect(stub?.countOps("fit")).toBe(1);
 	});
 
-	it("still fits exactly ONCE across ingests (camera law unchanged)", () => {
+	it("still fits exactly ONCE across ingests (camera state unchanged)", () => {
 		globalWithDpr.devicePixelRatio = 1;
 		const container = { clientWidth: 800, clientHeight: 600 };
 		const { engine, stub } = makeEngine(container);

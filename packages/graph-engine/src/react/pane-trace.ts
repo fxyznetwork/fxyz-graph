@@ -1,13 +1,13 @@
 /**
- * Freeze-surviving interaction trace (tm #1136 diagnostic instrument).
+ * Freeze-surviving interaction trace, a diagnostic instrument.
  *
- * The 2026-07-21 workbench "renderer freeze" could not be reproduced against
- * the same 16.7k-edge scene in an isolated harness (every tap ≤18ms, NVL
- * patch cost flat) — the hang lives somewhere in the surrounding environment,
- * and the only way to catch it in the wild is evidence that OUTLIVES a dead
- * tab. This tracer writes a small breadcrumb ring to localStorage
- * synchronously; after a freeze + reload, the last crumb names the phase that
- * never finished.
+ * A workbench "renderer freeze" could not be reproduced against a large
+ * edge-count scene in an isolated harness (every tap fast, renderer patch
+ * cost flat) — the hang lives somewhere in the surrounding environment, and
+ * the only way to catch it under real usage is evidence that OUTLIVES a dead
+ * tab. This tracer writes a small breadcrumb ring to localStorage synchronously;
+ * after a freeze + reload, the last crumb names the phase that never
+ * finished.
  *
  * OFF by default — zero writes, one boolean check per event. Enabled per
  * member/tab via `?paneTrace=1` (sticky for the session through

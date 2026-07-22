@@ -1,37 +1,39 @@
 /**
- * Canonical graph identity — the RC7 fix.
+ * Canonical graph identity.
  *
- * ID LAW (DESIGN-V2 §2, codex-hardened): a GraphRef is stable across every
- * surface, tier, lens, and refetch *within one audience projection*. The
- * server owns the cross-audience mapping; public refs are never derivable
- * from internal refs; positions and selection key by ref, never array index.
+ * A GraphRef is stable across every surface, tier, lens, and refetch within
+ * one audience projection. The server owns the cross-audience mapping; public
+ * refs are never derivable from internal refs; positions and selection key by
+ * ref, never by array index.
  *
- * Member rule (PII absolute): public/member payloads identify members as
- * `star:<publicRef>` (a durable opaque key minted once — star names are
- * DISPLAY, publicRef is IDENTITY); `member:<did>` refs exist only in
- * operator projections. Neo4j elementId never leaves the resolver layer.
+ * Identity rule for people: public/member payloads identify a person by a
+ * durable opaque public key (`star:<publicRef>`) — display names are separate
+ * from identity; internal person refs (`member:<key>`) exist only in operator
+ * projections and never reach a public payload.
  */
 
 /**
- * Node kinds v1. Extensible by design (apophatic — no fixed cardinality
- * assumption anywhere), but extension is deliberate: a new kind must be added
- * here AND to the serializer's audience gates before it can ship (allowlist,
- * not denylist — engine law 1).
+ * The reference node-kind set for this library — the domain vocabulary the
+ * fxyz graph is modelled in (currencies, institutions, corridors, tokens,
+ * members, and so on). It is NOT a universal schema: if you are modelling a
+ * different domain, fork or extend this list. The set is intentionally closed
+ * — a new kind is a deliberate addition here AND to the serializer's audience
+ * gates (allowlist, not denylist), never an ad-hoc string.
  */
 export const NODE_KINDS = [
 	"currency",
 	"institution",
 	"country",
 	"corridor",
-	"star", // member, public-safe identity (publicRef key)
-	"member", // member, operator-only identity (DID key) — never public
+	"star", // person, public-safe identity (opaque publicRef key)
+	"member", // person, operator-only identity (internal key) — never public
 	"concept",
 	"citation",
-	"community", // LOD super-node — EPHEMERAL, version-qualified key
+	"community", // level-of-detail super-node — ephemeral, version-qualified key
 	"circle",
 	"role",
-	"domain", // holacracy :Domain (slug-keyed, structural — no gate beyond member law)
-	"code", // graphify :CodeSymbol lens family
+	"domain", // structural grouping (slug-keyed)
+	"code", // code-symbol lens family
 	"indicator",
 	"token",
 	"asset",
@@ -53,9 +55,9 @@ export type Audience = (typeof AUDIENCES)[number];
 export type GraphRef = `${NodeKind}:${string}`;
 
 /**
- * Edge ids are minted server-side and deterministic (codex finding 8):
+ * Edge ids are minted server-side and deterministic:
  * `edge:{type}:{sourceRef}→{targetRef}[:{discriminator}]`. Parallel edges
- * (quotes, settlement legs, repeated rel-types) MUST carry a stable
+ * (quotes, settlement legs, repeated relationship types) MUST carry a stable
  * discriminator. Diffing, selection, deletion, URL state, and replay all
  * key on EdgeId.
  */
@@ -64,43 +66,42 @@ export type EdgeId = `edge:${string}`;
 const KIND_SET: ReadonlySet<string> = new Set(NODE_KINDS);
 
 /**
- * The positional-synthetic pattern the legacy public source minted for
- * members with no starName (`member-{magnitudeClass}-{batchIndex}`). Those
- * ids change with ordering/limits/membership — banned as ref keys (engine
- * law 13; codex finding 2). Narrow on purpose: legitimate keys ending in
- * digits (e.g. `HIP24436`) must pass.
+ * A positional-synthetic id pattern (`member-{class}-{index}`) whose value
+ * depends on ordering/limits/membership. Such ids are unstable across
+ * refetches, so they are banned as ref keys. Narrow on purpose: legitimate
+ * keys ending in digits (e.g. `HIP24436`) must pass.
  */
 const POSITIONAL_SYNTHETIC = /^member-[a-z0-9]+-\d+$/i;
 
 export class GraphRefViolation extends Error {
-	readonly law: string;
-	constructor(law: string, message: string) {
-		super(`[${law}] ${message}`);
+	readonly rule: string;
+	constructor(rule: string, message: string) {
+		super(`[${rule}] ${message}`);
 		this.name = "GraphRefViolation";
-		this.law = law;
+		this.rule = rule;
 	}
 }
 
 /** Mint a ref. Throws GraphRefViolation on rule breaches — never sanitizes. */
 export function makeRef(kind: NodeKind, key: string): GraphRef {
 	if (!KIND_SET.has(kind)) {
-		throw new GraphRefViolation("law-13", `unknown node kind '${kind}'`);
+		throw new GraphRefViolation("identity", `unknown node kind '${kind}'`);
 	}
 	const trimmed = key.trim();
 	if (trimmed.length === 0) {
-		throw new GraphRefViolation("law-13", `empty key for kind '${kind}'`);
+		throw new GraphRefViolation("identity", `empty key for kind '${kind}'`);
 	}
 	if (POSITIONAL_SYNTHETIC.test(trimmed)) {
 		throw new GraphRefViolation(
-			"law-13",
-			`positional synthetic id '${trimmed}' cannot be a ref key — mint a durable publicRef instead (DESIGN-V2 §2 / codex 2)`,
+			"identity",
+			`positional synthetic id '${trimmed}' cannot be a ref key — mint a durable opaque publicRef instead`,
 		);
 	}
 	if (trimmed.includes(":") && kind !== "code") {
 		// ':' is the kind separator; only the code kind may carry path-like
 		// keys with colons stripped by its own maker below.
 		throw new GraphRefViolation(
-			"law-13",
+			"identity",
 			`key '${trimmed}' contains ':' — keys must be colon-free (kind '${kind}')`,
 		);
 	}
@@ -111,11 +112,11 @@ export function makeRef(kind: NodeKind, key: string): GraphRef {
 export function parseRef(ref: string): { kind: NodeKind; key: string } {
 	const sep = ref.indexOf(":");
 	if (sep <= 0 || sep === ref.length - 1) {
-		throw new GraphRefViolation("law-13", `malformed ref '${ref}'`);
+		throw new GraphRefViolation("identity", `malformed ref '${ref}'`);
 	}
 	const kind = ref.slice(0, sep);
 	if (!KIND_SET.has(kind)) {
-		throw new GraphRefViolation("law-13", `unknown kind in ref '${ref}'`);
+		throw new GraphRefViolation("identity", `unknown kind in ref '${ref}'`);
 	}
 	return { kind: kind as NodeKind, key: ref.slice(sep + 1) };
 }
@@ -133,9 +134,8 @@ export function isGraphRef(value: unknown): value is GraphRef {
 /**
  * Community refs are outputs of a particular graph snapshot + algorithm run —
  * `community:42` after a Louvain re-run silently points at a different
- * population (codex finding 4). The dataVersion is therefore part of the key,
- * and community refs are EPHEMERAL: never persisted (saved views, URLs)
- * without their dataVersion.
+ * population. The dataVersion is therefore part of the key, and community refs
+ * are EPHEMERAL: never persisted (saved views, URLs) without their dataVersion.
  */
 export function makeCommunityRef(
 	dataVersion: string | number,
@@ -145,7 +145,7 @@ export function makeCommunityRef(
 	const id = String(communityId).trim();
 	if (!dv || !id) {
 		throw new GraphRefViolation(
-			"law-13",
+			"identity",
 			"community ref requires both dataVersion and communityId",
 		);
 	}
@@ -153,12 +153,11 @@ export function makeCommunityRef(
 }
 
 /**
- * Corridor refs are direction-normalized and rail/venue-qualified where a
- * rail exists (codex finding 4). Direction is MEANINGFUL for corridors
- * (send→receive), so it is preserved — normalization here means a canonical
- * spelling (upper-cased codes, single separator), not sorting.
- * The two corridor node families (:Corridor money-routing vs :P2PCorridor)
- * must never conflate — the optional `family` qualifier carries that.
+ * Corridor refs are direction-normalized and rail-qualified where a rail
+ * exists. Direction is MEANINGFUL for corridors (send→receive), so it is
+ * preserved — normalization here means a canonical spelling (upper-cased
+ * codes, single separator), not sorting. The optional `family` qualifier
+ * keeps distinct corridor families (routing vs p2p) from conflating.
  */
 export function makeCorridorRef(input: {
 	send: string;
@@ -170,7 +169,7 @@ export function makeCorridorRef(input: {
 	const receive = input.receive.trim().toUpperCase();
 	if (!send || !receive) {
 		throw new GraphRefViolation(
-			"law-13",
+			"identity",
 			"corridor ref requires send and receive",
 		);
 	}
@@ -194,16 +193,16 @@ export function makeEdgeId(
 	discriminator?: string,
 ): EdgeId {
 	const t = type.trim();
-	if (!t) throw new GraphRefViolation("law-13", "edge type required");
+	if (!t) throw new GraphRefViolation("identity", "edge type required");
 	const base = `edge:${t}:${source}→${target}`;
 	return (discriminator ? `${base}:${discriminator.trim()}` : base) as EdgeId;
 }
 
 /**
- * Ref lifecycle (codex finding 3): natural keys mutate (star renames, code
- * moves, corrected identifiers). Renames mint an alias entry; persisted refs
- * (saved views, URLs) resolve through aliases server-side. Kept as a type
- * here — storage is the server's (P1).
+ * Ref lifecycle: natural keys sometimes change (renames, moves, corrected
+ * identifiers). A rename mints an alias entry so persisted refs (saved views,
+ * URLs) resolve through the alias. This is the shape only — the server owns
+ * where aliases are stored.
  */
 export interface RefAlias {
 	/** The ref as persisted before the rename/move. */

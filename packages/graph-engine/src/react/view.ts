@@ -2,15 +2,14 @@
  * Pane view math — pure, renderer-independent. ONE seam by design: every
  * world↔screen conversion goes through these functions.
  *
- * Transform model = NVL 1.2.0's actual renderer math, bundle-verified in the
- * mechanics bank (docs/audits/2026-06-10-landing-finish/nvl.md fact 2):
+ * Transform model matches the underlying renderer's actual math:
  *
  *   backing_x = zoom · (world_x − panX) + canvasWidth/2,  canvas = css·dpr
  *   ⇒ css_x   = (zoom/dpr) · (world_x − panX) + cssWidth/2
  *
  * getScale() returns the backing zoom; getPan() returns {panX, panY} in
  * world units; the transform is CENTER-ORIGIN and pan is SUBTRACTIVE.
- * Live-verified against the P2 canary (labels sit under their nodes).
+ * Live-verified (labels sit under their nodes).
  */
 
 import type { GraphEdgeV1, GraphNodeV1 } from "@fxyz/graph-contract";
@@ -21,9 +20,9 @@ import {
 } from "../interaction/hit-index";
 
 export interface PaneView {
-	/** Backing zoom (backing px per layout px) — NVL getScale(). */
+	/** Backing zoom (backing px per layout px) — the renderer's getScale(). */
 	scale: number;
-	/** World-units pan — NVL getPan(). */
+	/** World-units pan — the renderer's getPan(). */
 	panX: number;
 	panY: number;
 	/** Container CSS size (the transform is center-origin). */
@@ -104,11 +103,11 @@ export function panByScreenDelta(
 }
 
 /**
- * Overlay live backend positions onto contract nodes (id-keyed, law 13) —
- * the ONE join the hit index and the label overlay both read, so tap-testing
- * and labels use the SAME position source the renderer draws from (#1055).
- * Nodes the backend doesn't know keep their payload coordinates (or stay
- * unpositioned and are skipped by both consumers).
+ * Overlay live backend positions onto contract nodes (id-keyed) — the ONE
+ * join the hit index and the label overlay both read, so tap-testing and
+ * labels use the SAME position source the renderer draws from. Nodes the
+ * backend doesn't know keep their payload coordinates (or stay unpositioned
+ * and are skipped by both consumers).
  */
 export function mergeLivePositions(
 	nodes: GraphNodeV1[],
@@ -127,8 +126,8 @@ export function mergeLivePositions(
 }
 
 /**
- * Tap-time hit-testing (law 10 — bounded by local density, never a linear
- * scan per pointermove; hover is banned so this runs on TAPS only).
+ * Tap-time hit-testing (bounded by local density, never a linear scan per
+ * pointermove; hover is banned so this runs on TAPS only).
  */
 export class NodeHitIndex {
 	private readonly grid: SpatialGrid;
@@ -177,11 +176,11 @@ export class NodeHitIndex {
 }
 
 /**
- * Tap-time EDGE hit-testing (Train 17 — corridors/routes were uninspectable:
- * gap audit 2026-07-21 #1). Same laws as NodeHitIndex: spatial-grid bounded,
- * taps only, consumer-gated construction (the pane builds it lazily and only
- * when an edge-inspect consumer is wired). Node hits take precedence in the
- * pane — an edge is only offered when no node is under the tap.
+ * Tap-time EDGE hit-testing (corridors/routes were previously uninspectable).
+ * Same rules as NodeHitIndex: spatial-grid bounded, taps only, consumer-gated
+ * construction (the pane builds it lazily and only when an edge-inspect
+ * consumer is wired). Node hits take precedence in the pane — an edge is
+ * only offered when no node is under the tap.
  */
 export class EdgeHitIndex {
 	private readonly grid: SegmentGrid;

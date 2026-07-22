@@ -1,11 +1,11 @@
 /**
- * Own interaction layer primitives (engine law 10; audit RC4 bypass).
+ * Own interaction layer primitives.
  *
- * NVL's stock HoverInteraction runs an UNTHROTTLED linear scan per mousemove
- * (measured: 25.6/9.9/4.5 fps at 25/50/100k vs 60/59.7/58.7 without). The
- * engine owns hit-testing instead: uniform spatial grids for nodes AND edge
- * segments (SegmentGrid — landed with Train 17; an unindexed edge fallback
- * would have reintroduced the linear scan, codex finding 20) and a
+ * A renderer's stock hover-interaction handling can run an UNTHROTTLED
+ * linear scan per mousemove (measured: 25.6/9.9/4.5 fps at 25/50/100k vs
+ * 60/59.7/58.7 without). The engine owns hit-testing instead: uniform
+ * spatial grids for nodes AND edge segments (SegmentGrid; an unindexed edge
+ * fallback would reintroduce the linear scan) and a
  * trailing-edge throttle at zoom parity (25ms).
  */
 
@@ -65,7 +65,7 @@ export class SpatialGrid {
 		return out;
 	}
 
-	/** Test hook (law 10): how many cells a query touches. */
+	/** Test hook: how many cells a query touches. */
 	cellsTouched(x: number, y: number, radius: number): number {
 		const minCx = Math.floor((x - radius) / this.cellSize);
 		const maxCx = Math.floor((x + radius) / this.cellSize);
@@ -102,9 +102,8 @@ export function pointSegmentDistance2(
 }
 
 /**
- * Edge-segment spatial index (the "edge segment index follows in P2" this
- * header deferred — an unindexed edge fallback would reintroduce RC4's
- * linear scan). Each segment registers in every grid cell it passes through
+ * Edge-segment spatial index (an unindexed edge fallback would reintroduce
+ * the linear scan noted above). Each segment registers in every grid cell it passes through
  * (sampled walk at half-cell steps, deduped); queries visit only covered
  * cells, so tap cost is bounded by local density, independent of edge count.
  */
@@ -179,7 +178,7 @@ export class SegmentGrid {
 }
 
 /**
- * Trailing-edge throttle at hover/zoom parity (law 10: ≥25ms). Injectable
+ * Trailing-edge throttle at hover/zoom parity (rule: ≥25ms). Injectable
  * clock so tests are deterministic.
  */
 export function throttle<Args extends unknown[]>(

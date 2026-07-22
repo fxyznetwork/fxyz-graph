@@ -1,9 +1,8 @@
 /**
- * Law 12 — backend swappability: the same scenario runs against the stub
- * backend and the NVL adapter (driving a FAKE NvlLikeInstance), and the
+ * Backend swappability: the same scenario runs against the stub
+ * backend and the renderer adapter (driving a FAKE NvlLikeInstance), and the
  * observable results must be identical. This is the seam that makes any
- * future renderer change (the P4 founder gate: sigma / cosmos) a backend
- * swap, never another integration rewrite.
+ * future renderer change a backend swap, never another integration rewrite.
  */
 
 import {
@@ -28,7 +27,7 @@ const OPTS: BackendConstructOptions = {
 	disableTelemetry: true,
 };
 
-/** Minimal faithful fake of the NVL 1.2.0 surface the adapter touches. */
+/** Minimal faithful fake of the renderer surface the adapter touches. */
 function makeFakeNvl(): { instance: NvlLikeInstance; log: string[] } {
 	const nodes = new Map<string, { id: string; x?: number; y?: number }>();
 	const rels = new Map<string, { id: string; from?: string; to?: string }>();
@@ -154,7 +153,7 @@ function runScenario(factory: BackendFactory) {
 	};
 }
 
-describe("law 12 · backend swappability — identical observables across backends", () => {
+describe("backend swappability — identical observables across backends", () => {
 	it("stub and NVL-adapter backends converge on the same end state", () => {
 		const { instance } = makeFakeNvl();
 		const viaStub = runScenario(createStubBackend);
@@ -164,11 +163,11 @@ describe("law 12 · backend swappability — identical observables across backen
 		expect(viaNvl.relIds).toEqual(viaStub.relIds);
 		expect(viaNvl.positions).toEqual(viaStub.positions);
 		expect(viaNvl.selection).toEqual(viaStub.selection);
-		// the diff removed BRL on both backends — never accumulate (#791 class)
+		// the diff removed BRL on both backends — never accumulate
 		expect(viaStub.nodeIds).toEqual(["currency:EUR", "currency:NGN"]);
 	});
 
-	it("the adapter drives live setRenderer instead of destroy+recreate (#791 stale)", () => {
+	it("the adapter drives live setRenderer instead of destroy+recreate", () => {
 		const { instance, log } = makeFakeNvl();
 		const backend = createNvlBackendFactory(() => instance)(OPTS);
 		backend.setRenderer("canvas");

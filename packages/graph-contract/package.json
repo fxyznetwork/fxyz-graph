@@ -33,8 +33,19 @@
 		"provenance",
 		"lens"
 	],
-	"author": "ƒxyz ℕetwork",
-	"license": "MIT",
+	"author": "fxyz network",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fxyznetwork/fxyz-graph.git"
+	},
+	"homepage": "https://github.com/fxyznetwork/fxyz-graph/tree/main/packages/graph-contract#readme",
+	"bugs": {
+		"url": "https://github.com/fxyznetwork/fxyz-graph/issues"
+	},
+	"engines": {
+		"node": ">=22"
+	},
 	"devDependencies": {
 		"@swc/core": "^1.15.40",
 		"@swc/jest": "^0.2.39",

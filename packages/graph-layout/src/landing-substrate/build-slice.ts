@@ -1,5 +1,5 @@
 /**
- * Build a fully-positioned, community-tagged landing-substrate slice.
+ * Build a fully-positioned, community-tagged graph slice.
  *
  * Single entrypoint that:
  *   1. Runs two-pass community detection (kind macro + Louvain sub)
@@ -20,7 +20,7 @@ import type {
 import { runCloseLayout2d } from "./close-layout";
 import { detectCommunities } from "./community-detection";
 import { runForceLayout } from "./force-layout";
-import type { LandingSubstrateSlice, StellarTone } from "./types";
+import type { LandingSubstrateSlice, PaletteTone } from "./types";
 
 interface BuildOptions {
 	radius?: number;
@@ -28,13 +28,13 @@ interface BuildOptions {
 }
 
 /**
- * Defensive normalization. Source data has, in the wild, contained:
- *   - nodes with empty / missing id (canon-promotion artefacts pre-migration 121)
- *   - duplicate node ids (race between two ingestion passes on the same Concept)
+ * Defensive normalization. Source data can contain:
+ *   - nodes with empty / missing id
+ *   - duplicate node ids
  *   - edges referencing unknown source/target ids (orphan relations)
  *
- * Rather than blowing up the whole landing slice, we drop these inputs at
- * the boundary so the renderer still gets a consistent graph.
+ * Rather than blowing up the whole slice, we drop these inputs at the boundary
+ * so the renderer still gets a consistent graph.
  */
 function sanitize(data: SubstrateData): {
 	nodes: SubstrateNode[];
@@ -69,36 +69,29 @@ function normalize(value: unknown): string {
 /**
  * Augment the slice with prop-derived structural edges.
  *
- * Founder report 2026-05-08: "nodes are not related, we tried many times to
- * make them logical, are we still moving a few countries here and there?
- * we have all stablecoins all partners and many things in our neo4j and we
- * can add more if needed". The Cypher harvest in `fetchEdgesForNodeSet`
- * pulls 23 relationship types between slice nodes, but many entity kinds
- * (CBDCProject, Indicator, RWAAsset, Partner) carry their structural
- * anchors as **string properties** rather than as graph relationships in
- * Neo4j — so a CBDC node with `country='Brazil'` returns from Neo4j with
- * zero outgoing edges, and the substrate reads as disconnected islands.
+ * Many entity kinds (CBDCProject, Indicator, RWAAsset, Partner) carry their
+ * structural anchors as **string properties** rather than as explicit graph
+ * relationships — so a CBDC node with `country='Brazil'` arrives with zero
+ * outgoing edges, and the graph reads as disconnected islands.
  *
  * This pass walks the slice nodes and synthesizes edges from the props
  * themselves: CBDC.country → Country, CBDC.digitalCurrency → Currency,
- * Indicator.country → Country, Partner.jurisdiction → Country, FI.country
- * → Country, RWAAsset.currency → Currency. Each synthesized edge gets a
- * stable id (`synth:<source>:<target>:<kind>`) and a real `SubstrateEdgeKind`
- * that already has a render-tint in `edge-layer-tinting.ts`. We never
- * overwrite an edge the Cypher already returned — if there's a real graph
- * relationship between two slice nodes, that one wins.
+ * Indicator.country → Country, Partner.jurisdiction → Country,
+ * FinancialInstitution.country → Country, RWAAsset.currency → Currency. Each
+ * synthesized edge gets a stable id (`synth:<source>:<target>:<kind>`) and a
+ * real `SubstrateEdgeKind`. We never overwrite an edge that was already
+ * present — a real relationship between two slice nodes always wins.
  *
- * Aligned with the scenario: every synthesized edge corresponds to a real
- * structural relationship the entity declares about itself in Neo4j; we're
- * exposing what's already there, not inventing connections that don't exist.
+ * Every synthesized edge corresponds to a structural relationship the entity
+ * declares about itself in its own props; this exposes what is already there,
+ * it does not invent connections.
  */
 /**
- * Hardcoded ISO-2 → ISO-3 normalization for the common cases the slice
- * carries as-property. Indicator nodes carry `country = "US"` (ISO-2)
- * but the Country query yields `name = "United States of America"`,
- * which means the lowercase `"us"` lookup misses unless we explicitly
- * normalize. Restricted to the highest-value cases so this stays a
- * pragmatic bridge, not a full ISO library.
+ * Hardcoded ISO-2 → name normalization for the common cases the slice carries
+ * as a property. Indicator nodes carry `country = "US"` (ISO-2) but a Country
+ * node's name is "United States of America", so the lowercase `"us"` lookup
+ * misses unless we explicitly normalize. Restricted to the highest-value cases
+ * so this stays a pragmatic bridge, not a full ISO library.
  */
 const ISO2_TO_NAME: Record<string, string> = {
 	us: "united states of america",
@@ -126,27 +119,18 @@ const ISO2_TO_NAME: Record<string, string> = {
 };
 
 /**
- * Stablecoin issuer → currency code mapping. Partner nodes have names
- * like "Circle" / "Tether" / "Paxos" but no graph edge to the Currency
- * they issue. This map declares the well-known issuer relationships so
- * the substrate slice can render an `ISSUES_CURRENCY` synth edge from
- * each Partner to its Currency. Lower-cased Partner name → Currency
- * code (case-insensitive).
+ * Stablecoin issuer → currency code mapping. Partner nodes have names like
+ * "Circle" / "Tether" / "Paxos" but no explicit edge to the currency they
+ * issue. This map declares the well-known issuer relationships so the slice
+ * can render an `ISSUES_CURRENCY` synth edge from each Partner to its currency.
+ * Lower-cased Partner name → currency code (case-insensitive). Compiled from
+ * public market reports; extend it as new issuers appear.
  *
- * Sourced from the public Bridge.xyz / Stripe / Stargazer market reports
- * that ƒxyz already references in `docs/research/`. Restricted to the
- * Partners actually present in our prod slice 2026-05-08; extend as
- * new Partners ship.
- *
- * 2026-06-10 (slice.md §1d): this map was dead code in practice from
- * 2026-05-09 onward — it looks up targets in `currencyByKey`, which only
- * indexed kind==="Currency" nodes, while USDC/USDT/… ship as kind "Asset".
- * Result: every Partner isolated. Fixed by indexing Asset nodes into the
- * currency lookup (see synthesizePropEdges). Real (:Stablecoin)-[:PEGS_TO]->
- * (:Currency) graph edges (migs 302/542) are now also whitelisted in
- * `fetchEdgesForNodeSet` and carry the peg story with live data; this map
- * stays as the Partner→issued-coin bridge until Partner→Asset edges exist
- * in the graph itself.
+ * Note: the targets are looked up in `currencyByKey`, which also indexes Asset
+ * nodes (USDC/USDT/… ship as kind "Asset", not "Currency") — see
+ * synthesizePropEdges. Where a real stablecoin→currency peg edge exists in the
+ * source data it carries the peg story directly; this map is the fallback
+ * Partner→issued-coin bridge.
  */
 const PARTNER_ISSUES_CURRENCY: Record<string, string[]> = {
 	circle: ["USDC", "EURC"],
@@ -202,23 +186,19 @@ function synthesizePropEdges(
 				const norm = normalize(k);
 				if (norm) countryByKey.set(norm, node);
 			}
-			// 2026-06-11 Wave A.1 (slice-isolation-gap.md item 2): index EVERY
-			// slice Country node by its own ISO-2 code so partner jurisdictions
-			// (props.jurisdiction is an ISO-2 like "TR"/"NG"/"AE") resolve for
-			// any country the slice actually carries, not just the 22 hardcoded
-			// in ISO2_TO_NAME. The Country query returns
-			// `coalesce(c.iso2, c.alpha2) AS iso2` from the upstream Country query, and
-			// `iso2` is in PUBLIC_PROPS, so node.props.iso2 is the live reverse
-			// key. (This is also covered incidentally by the `keys` loop above,
-			// but kept explicit so the partner-jurisdiction connector is
-			// self-documenting and survives any future refactor of `keys`.)
+			// Index EVERY Country node by its own ISO-2 code so partner
+			// jurisdictions (props.jurisdiction is an ISO-2 like "TR"/"NG"/"AE")
+			// resolve for any country the slice carries, not just the ones
+			// hardcoded in ISO2_TO_NAME. When a Country node ships its own `iso2`
+			// prop, that is the live reverse key. (Also covered incidentally by
+			// the `keys` loop above, but kept explicit so the partner-jurisdiction
+			// connector survives any future refactor.)
 			const liveIso2 = normalize(node.props?.iso2);
 			if (liveIso2) countryByKey.set(liveIso2, node);
 			// Fallback: reverse-index ISO-2 codes via the hardcoded
-			// ISO2_TO_NAME name map. SUPERSEDED-BY-LIVE-INDEX (above) for any
-			// code the slice Country node carries in props.iso2 — kept per
-			// no-revert-no-delete-culture for countries whose slice node ships
-			// with a NULL iso2/alpha2 (the live index can't cover those).
+			// ISO2_TO_NAME map, superseded by the live index above for any
+			// code a Country node carries in props.iso2 — kept for countries
+			// whose node ships with a NULL iso2 (the live index can't cover those).
 			// E.g. "us" → United States of America node even when iso2 is NULL.
 			if (nameNorm) {
 				for (const [iso2, name] of Object.entries(ISO2_TO_NAME)) {
@@ -241,12 +221,11 @@ function synthesizePropEdges(
 	}
 
 	// Second pass — Asset nodes fill the currency lookup WITHOUT overwriting
-	// real Currency entries (2026-06-10, slice.md §3 item 4). This is what
-	// revives the PARTNER_ISSUES_CURRENCY bridge: USDC/USDT/… are kind
-	// "Asset", so the Currency-only index above could never resolve them and
-	// every stablecoin-issuing Partner shipped isolated. The Asset query
-	// excludes fiat, so symbol/code collisions with ISO currencies shouldn't
-	// occur — the no-overwrite guard is belt-and-suspenders.
+	// real Currency entries. This revives the PARTNER_ISSUES_CURRENCY bridge:
+	// USDC/USDT/… are kind "Asset", so a Currency-only index could never
+	// resolve them and every stablecoin-issuing Partner would ship isolated.
+	// Asset symbols/codes shouldn't collide with ISO currencies, so the
+	// no-overwrite guard is belt-and-suspenders.
 	for (const node of assetNodes) {
 		const keys = [node.id, node.label, node.props?.symbol, node.props?.name];
 		for (const k of keys) {
@@ -257,8 +236,8 @@ function synthesizePropEdges(
 
 	if (countryByKey.size === 0 && currencyByKey.size === 0) return [];
 
-	// Existing edge keys so we don't duplicate edges the Cypher already
-	// returned. Composite key is `${source}|${target}|${kind}`.
+	// Existing edge keys so we don't duplicate edges already present.
+	// Composite key is `${source}|${target}|${kind}`.
 	const existing = new Set<string>();
 	for (const e of edges) {
 		existing.add(`${e.source}|${e.target}|${e.kind}`);
@@ -275,11 +254,7 @@ function synthesizePropEdges(
 		if (existing.has(key)) return;
 		existing.add(key);
 		synthesized.push({
-			// TODO(#1003): `synth:` predates the @fxyz/graph-contract EdgeId
-			// grammar (source/edge-id.ts now carries it for fetched edges).
-			// Landing slice v0 is FROZEN for fenced consumers, so these values
-			// stay; the contract-native v1 slice mints makeEdgeId with a
-			// `synth` discriminator instead.
+			// A stable, deterministic synthetic id for a prop-derived edge.
 			id: `synth:${source.id}:${target.id}:${kind}`,
 			source: source.id,
 			target: target.id,
@@ -308,8 +283,8 @@ function synthesizePropEdges(
 		for (const cand of countryCandidates) {
 			const target = countryByKey.get(normalize(cand));
 			if (!target) continue;
-			// FI uses HEADQUARTERED_IN as the canonical institution-to-country
-			// edge per migration 139; everything else uses IN_COUNTRY.
+			// FinancialInstitution uses HEADQUARTERED_IN as its institution-to-
+			// country edge; everything else uses IN_COUNTRY.
 			const kind: SubstrateEdgeKind =
 				node.kind === "FinancialInstitution"
 					? "HEADQUARTERED_IN"
@@ -335,14 +310,12 @@ function synthesizePropEdges(
 			break;
 		}
 
-		// Partner → Currency: hardcoded issuer map. Partners (stablecoin
-		// issuers) have NO graph edges to Currency in Neo4j today, so the
-		// only way to densify them in the slice is a name-based lookup.
-		// Each Partner gets an ISSUES_CURRENCY edge to every Currency code
-		// in PARTNER_ISSUES_CURRENCY[partner.name.toLowerCase()] that is
-		// also present in the slice. ~2026-05-08 PM founder mandate: stop
-		// the 64/64 Partner-orphan rate that's been making the substrate
-		// look disconnected at scroll>0.85.
+		// Partner → Currency: hardcoded issuer map. Partner (stablecoin
+		// issuer) nodes often have NO edge to the Currency they issue, so
+		// the only way to connect them is a name-based lookup. Each Partner
+		// gets an ISSUES_CURRENCY edge to every Currency code in
+		// PARTNER_ISSUES_CURRENCY[partner.name.toLowerCase()] that is also
+		// present in the slice, so issuers don't render as isolated dust.
 		if (node.kind === "Partner") {
 			const partnerKey = normalize(node.label ?? node.props?.name ?? node.id);
 			const codes = PARTNER_ISSUES_CURRENCY[partnerKey];
@@ -372,7 +345,7 @@ export function buildLandingSlice(
 
 	const { communities, nodeCommunity } = detectCommunities({ nodes, edges });
 
-	const communityTones = new Map<string, StellarTone>();
+	const communityTones = new Map<string, PaletteTone>();
 	for (const community of communities) {
 		communityTones.set(community.id, community.tone);
 	}
@@ -386,25 +359,22 @@ export function buildLandingSlice(
 		iterations: options.iterations,
 	});
 
-	// Wave C (close-v2.md §5 req 3 + 9): deterministic 2D close layout,
-	// seeded from the 3D pass's (x, y) so the crossfade descends from the
-	// same shape. Per-node `close2d: [x, y]` (2-decimal). Degree-0 dust is
-	// excluded — missing close2d IS the dust signal (consumer dust-drops
-	// per #106). Bounded fixed-iteration sim; measured ~380ms at ~880
-	// in-sim nodes — amortized by the route's 60s slice memo (cold start
-	// only; expired memos refresh in the background).
+	// Deterministic 2D close layout, seeded from the 3D pass's (x, y) so a
+	// crossfade descends from the same shape. Per-node `close2d: [x, y]`
+	// (2-decimal). Degree-0 nodes are excluded — a missing close2d is the
+	// unambiguous "isolated" signal. Bounded fixed-iteration sim; run once
+	// server-side (cache the slice if you rebuild it often).
 	const close2dById = runCloseLayout2d({ nodes: positionedNodes, edges });
 	for (const node of positionedNodes) {
 		const close2d = close2dById.get(node.id);
 		if (close2d) node.close2d = close2d;
 	}
 
-	// meta.counts recomputed POST-sanitize (2026-06-10 slice.md §1e). The
-	// fetcher tallies counts before sanitize() drops null-id / duplicate
-	// nodes and orphan edges, so it could report e.g. `FiboClass: 100` while
-	// 0 actually shipped (the null-id wipe). Counts now describe the payload
-	// that ships — including synthesized prop-edges. Kinds the fetcher
-	// reported are kept (at 0 if everything was dropped) so the meta shape
+	// meta.counts are recomputed POST-sanitize. Upstream counts may be
+	// tallied before sanitize() drops null-id / duplicate nodes and orphan
+	// edges, so they could over-report; these counts describe the payload
+	// that actually ships (including synthesized prop-edges). Kinds present
+	// upstream are kept (at 0 if everything was dropped) so the meta shape
 	// stays stable for consumers.
 	const counts: Record<string, number> = {};
 	for (const key of Object.keys(data.meta?.counts ?? {})) {

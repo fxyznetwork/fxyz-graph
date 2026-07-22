@@ -1,8 +1,7 @@
 /**
- * Adversarial redaction tests — the other half of "structural" PII and
- * confidentiality enforcement (DESIGN-V2 §2; codex findings 5/6/7/13).
- * These feed hostile nodes through every audience and assert the serializer
- * throws (PII) or strips (totals) — never serves.
+ * Adversarial tests — the other half of the sensitive-data and confidentiality
+ * enforcement. They feed hostile nodes through every audience and assert the
+ * serializer throws (sensitive data) or strips (totals) — never serves.
  */
 
 import type { GraphEdgeV1, GraphNodeV1 } from "../payload";
@@ -53,12 +52,12 @@ function baseInput(
 	};
 }
 
-describe("PII choke point (law-3-pii — absolute)", () => {
-	it("throws on a DID in a label, on EVERY audience", () => {
+describe("sensitive-data choke point (absolute)", () => {
+	it("throws on a decentralized identifier in a label, on EVERY audience", () => {
 		const hostile: GraphNodeV1 = {
 			...eur,
 			id: makeRef("concept", "leaky"),
-			label: "did:privy:examplenode01",
+			label: "did:example:examplenode01",
 		};
 		for (const audience of ["public", "member", "operator"] as const) {
 			expect(() =>
@@ -71,16 +70,16 @@ describe("PII choke point (law-3-pii — absolute)", () => {
 		const hostile: GraphNodeV1 = {
 			...eur,
 			id: makeRef("concept", "leaky2"),
-			label: "reach me at ken@example.com",
+			label: "reach me at someone@example.com",
 		};
 		expect(() =>
 			buildPayload(baseInput({ nodes: [hostile], edges: [] })),
 		).toThrow(SerializerViolation);
 	});
 
-	it("rejects DID-keyed member refs outside operator projections", () => {
+	it("rejects internally-keyed member refs outside operator projections", () => {
 		const didMember: GraphNodeV1 = {
-			id: "member:did-privy-abc123" as GraphNodeV1["id"],
+			id: "member:did-example-abc123" as GraphNodeV1["id"],
 			kind: "member",
 			label: "Operator View Member",
 			provenance: "real",
@@ -93,7 +92,7 @@ describe("PII choke point (law-3-pii — absolute)", () => {
 				baseInput({ audience: "member", nodes: [didMember], edges: [] }),
 			),
 		).toThrow(SerializerViolation);
-		// operator projection may carry member-kind refs (still no DID in label)
+		// operator projection may carry member-kind refs (still no identifier in label)
 		expect(() =>
 			buildPayload(
 				baseInput({ audience: "operator", nodes: [didMember], edges: [] }),
@@ -102,7 +101,7 @@ describe("PII choke point (law-3-pii — absolute)", () => {
 	});
 });
 
-describe("confidential-by-design (law-17 — closed MeasureKind)", () => {
+describe("confidential-by-design (closed MeasureKind)", () => {
 	it("throws on a balance-shaped measure key — no enum member can carry it", () => {
 		const hostile = {
 			...eur,
@@ -133,26 +132,26 @@ describe("confidential-by-design (law-17 — closed MeasureKind)", () => {
 		);
 	});
 
-	it("enforces the lens token-layer declaration (codex 15)", () => {
-		const florin: GraphNodeV1 = {
+	it("enforces the lens token-layer declaration", () => {
+		const settlementToken: GraphNodeV1 = {
 			...eur,
-			id: makeRef("token", "FLORIN"),
-			label: "Florin",
-			tokenLayer: "florin-settlement",
+			id: makeRef("token", "SETTLE"),
+			label: "Settlement token",
+			tokenLayer: "settlement",
 		};
 		expect(() =>
 			buildPayload(
 				baseInput({
-					nodes: [florin, brl],
+					nodes: [settlementToken, brl],
 					edges: [],
-					allowedTokenLayers: ["fxyz-position"],
+					allowedTokenLayers: ["position"],
 				}),
 			),
 		).toThrow(SerializerViolation);
 	});
 });
 
-describe("audience-gated totals + CDN rule (codex 6/13)", () => {
+describe("audience-gated totals + CDN rule", () => {
 	it("strips totals from public payloads (framing label survives)", () => {
 		const publicPayload = buildPayload(baseInput());
 		expect(publicPayload.coverage.framing).toBe("curated");
@@ -177,7 +176,7 @@ describe("audience-gated totals + CDN rule (codex 6/13)", () => {
 		expect(pub.cacheKey).not.toBe(member.cacheKey);
 	});
 
-	it("refuses legacyIdMap on public payloads (codex 9)", () => {
+	it("refuses legacyIdMap on public payloads", () => {
 		expect(() =>
 			buildPayload(baseInput({ legacyIdMap: { [eur.id]: "4:abc:123" } })),
 		).toThrow(SerializerViolation);
@@ -192,7 +191,7 @@ describe("audience-gated totals + CDN rule (codex 6/13)", () => {
 	});
 });
 
-describe("identity integrity (law-13)", () => {
+describe("identity integrity", () => {
 	it("throws on duplicate node refs", () => {
 		expect(() => buildPayload(baseInput({ nodes: [eur, eur] }))).toThrow(
 			SerializerViolation,
@@ -210,7 +209,7 @@ describe("identity integrity (law-13)", () => {
 		);
 	});
 
-	it("positionsIncluded=true requires finite coords on every node (law-5)", () => {
+	it("positionsIncluded=true requires finite coords on every node", () => {
 		const positioned = { ...eur, x: 1, y: 2 };
 		expect(() =>
 			buildPayload(

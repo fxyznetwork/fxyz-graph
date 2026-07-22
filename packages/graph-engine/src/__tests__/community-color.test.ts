@@ -1,7 +1,7 @@
 /**
- * #1082 — categorical community→color styling (engine half). The style
+ * Categorical community→color styling (engine half). The style
  * pipeline maps a node's version-qualified `community` ref deterministically to
- * a Stellar-v3 palette hue: same ref → same hue across sessions, distinct refs
+ * a fixed palette hue: same ref → same hue across sessions, distinct refs
  * spread across the wheel, and a node with NO community keeps whatever the lens
  * default left it (never forced onto the palette).
  */
@@ -26,7 +26,7 @@ function node(key: string, community?: string): GraphNodeV1 {
 
 const COMMUNITY_RULE = { source: "community", channel: "color" } as const;
 
-describe("#1082 · community→color is a stable categorical hash", () => {
+describe("community→color is a stable categorical hash", () => {
 	it("the same community ref always maps to the same hue", () => {
 		expect(communityColor("community:v7-42")).toBe(
 			communityColor("community:v7-42"),
@@ -52,7 +52,7 @@ describe("#1082 · community→color is a stable categorical hash", () => {
 	});
 });
 
-describe("#1082 · applyStyleRules honors the community source", () => {
+describe("applyStyleRules honors the community source", () => {
 	it("paints a node's community hue when the rule is present", () => {
 		const n = node("USD", "community:v3-9");
 		const patch = applyStyleRules([n], [COMMUNITY_RULE]).get(n.id);

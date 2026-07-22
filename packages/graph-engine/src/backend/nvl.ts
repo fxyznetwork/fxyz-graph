@@ -1,16 +1,16 @@
 /**
- * NVL backend adapter (DESIGN-V2 §3 backend-nvl).
+ * Backend adapter for an injected rendering engine instance.
  *
- * P0 shape: the adapter takes an INJECTED instance constructor rather than
- * importing `@neo4j-nvl/base` directly — production wiring (P2, GraphPane)
- * passes `(container, nodes, rels, opts) => new NVL(container, nodes, rels,
- * opts)`; tests pass a fake. This keeps the engine package dependency-free at
- * P0 while preserving the law-12 seam: when the real import lands (P2), THIS
- * remains the only module allowed to touch `@neo4j-nvl/*`.
+ * The adapter takes an INJECTED instance factory rather than importing a
+ * rendering library directly — production wiring
+ * passes `(container, nodes, rels, opts) => new Renderer(container, nodes,
+ * rels, opts)`; tests pass a fake. This keeps the engine package
+ * dependency-free while preserving the seam: this
+ * remains the only module allowed to touch the underlying rendering library.
  *
- * Live `setRenderer()` is used on the 500-crossing instead of the 2024
- * adapter's destroy+recreate — measured working on 1.2.0 (fair-run addendum
- * A5; the #791 no-op report is stale).
+ * Live `setRenderer()` is used on the 500-node-crossing instead of a
+ * destroy+recreate cycle — measured working against the current renderer
+ * version.
  */
 
 import {
@@ -22,10 +22,10 @@ import {
 } from "./contract";
 
 /**
- * Structural type of the NVL 1.2.0 surface this adapter touches. Return
+ * Structural type of the renderer surface this adapter touches. Return
  * shapes are intentionally minimal (`id` only, no index signature) so the
- * REAL `NVL` class instance is assignable without casts at injection sites —
- * extra fields ride through the adapter's spreads untyped.
+ * real renderer class instance is assignable without casts at injection
+ * sites — extra fields ride through the adapter's spreads untyped.
  */
 export interface NvlLikeInstance {
 	getNodes(): Array<{ id: string | number }>;
@@ -37,7 +37,8 @@ export interface NvlLikeInstance {
 	removeRelationshipsWithIds(ids: string[]): void;
 	getSelectedNodes?(): Array<{ id: string | number }>;
 	deselectAll?(): void;
-	// Vendor asymmetry (1.2.0 d.ts + bundle): pin takes ONE id, unpin an ARRAY.
+	// Renderer asymmetry (verified against its type defs + bundle): pin takes
+	// ONE id, unpin an ARRAY.
 	pinNode?(nodeId: string): void;
 	unPinNode?(nodeIds: string[]): void;
 	setZoomAndPan(zoom: number, x: number, y: number): void;
@@ -49,10 +50,11 @@ export interface NvlLikeInstance {
 }
 
 /**
- * Structural slice of NVL's ExternalCallbacks (constructor 5th arg) this
- * adapter rides. `onLayoutDone` is the vendor's own "layout is done moving"
- * signal — the real motion lever the 2024 adapter never set (audit RC6);
- * isLayoutMoving() is derived from it, never guessed from the layout name.
+ * Structural slice of the renderer's ExternalCallbacks (constructor 5th arg)
+ * this adapter rides. `onLayoutDone` is the renderer's own "layout is done
+ * moving" signal — the real motion lever a naive polling approach would
+ * miss; isLayoutMoving() is derived from it, never guessed from the layout
+ * name.
  */
 export interface NvlLikeCallbacks {
 	onLayoutDone?: () => void;
@@ -71,10 +73,10 @@ export type NvlInstanceFactory = (
 const CSS_VAR_PATTERN = /^var\((--[\w-]+)(?:\s*,\s*(.+))?\)$/;
 
 /**
- * Selection salience (#1097). NVL's built-in per-element `selected` flag only
- * scales rel width ×1.5 (bundle: `Xs = (e.selected?1.5:1)·width`) with NO
- * colour change — imperceptible against the subdued base edge
- * (`rgba(148,163,184,0.35)`, ~1px). So the lawful highlight ALSO lifts an
+ * Selection salience. The renderer's built-in per-element `selected` flag
+ * only scales rel width ×1.5 (bundle: `Xs = (e.selected?1.5:1)·width`) with
+ * NO colour change — imperceptible against the subdued base edge
+ * (`rgba(148,163,184,0.35)`, ~1px). So the highlight ALSO lifts an
  * explicit salient colour + width on the flip-to-selected, and restores the
  * exact snapshotted base style on the flip-to-deselected — the subdued base
  * stays subdued. Theme-tokened with a concrete fallback so the canvas/WebGL
@@ -85,19 +87,19 @@ const EDGE_SELECTED_COLOR =
 const EDGE_SELECTED_WIDTH = 2.5;
 
 /**
- * K-calibration size normalization (tm #1098, measured 2026-07-19 with
- * scripts/graph/nvl-k-harness.html — exact at zoom 1 AND 2, canvas renderer):
+ * Size normalization for dpr-independent world-space sizing (measured exact
+ * at zoom 1 AND 2, canvas renderer):
  *
  *   position: css = (Z/dpr)·(world − pan) + cssSize/2
- *   radius:   css_radius = size · Z        (vendor `size` = RADIUS, no dpr division)
+ *   radius:   css_radius = size · Z        (renderer `size` = RADIUS, no dpr division)
  *
  * Positions compress by 1/dpr but radii do NOT — so a raw lens size renders at
- * `size · dpr` WORLD radius (2× the intended diameter at dpr 1, 4× at dpr 2:
- * the public-overview "lump"). Handing NVL `size/(2·dpr)` makes the engine's
+ * `size · dpr` WORLD radius (2× the intended diameter at dpr 1, 4× at dpr 2).
+ * Handing the renderer `size/(2·dpr)` makes the engine's
  * size channel a true dpr-independent world-space DIAMETER: drawn world radius
- * = size/2, matching precompute-positions' overviewRadius (227e66c26) and
- * GraphPane's label anchorRadius (size/2) exactly. One-way boundary: getNodes()
- * returns vendor-space sizes — never feed a read-back node into ingest.
+ * = size/2, matching a consumer's precomputed overview radius and label
+ * anchor radius (size/2) exactly. One-way boundary: getNodes()
+ * returns renderer-space sizes — never feed a read-back node into ingest.
  */
 function normalizedNodeSize(size: unknown, dpr: number): unknown {
 	if (typeof size !== "number" || !Number.isFinite(size)) return size;
@@ -110,11 +112,11 @@ function deviceDpr(): number {
 
 /**
  * Resolve `var(--token, fallback)` color strings against the live container
- * before they reach NVL — canvas 2D fillStyle and the WebGL uniform path both
- * take concrete colors only, so an unresolved custom property silently renders
- * as the default (the reason the lens color channel was invisible on the P2
- * canary). Non-var strings pass through untouched; unresolvable vars fall to
- * their declared fallback, else stay unset.
+ * before they reach the renderer — canvas 2D fillStyle and the WebGL uniform
+ * path both take concrete colors only, so an unresolved custom property
+ * would otherwise silently render as the default. Non-var strings pass
+ * through untouched; unresolvable vars fall to their declared fallback, else
+ * stay unset.
  */
 function resolveCssColor(container: unknown, value: unknown): unknown {
 	if (typeof value !== "string") return value;
@@ -143,7 +145,7 @@ export class NvlBackend implements GraphBackend {
 	private selectedRels = new Set<string>();
 	/**
 	 * Base (pre-selection) rel style, snapshotted at ingest so selection
-	 * salience can be lifted and then restored exactly (#1097). Keyed by rel id;
+	 * salience can be lifted and then restored exactly. Keyed by rel id;
 	 * only base ingest writes it — selection flips bypass the snapshot path.
 	 */
 	private relBaseStyle = new Map<
@@ -151,7 +153,7 @@ export class NvlBackend implements GraphBackend {
 		{ color?: unknown; width?: unknown }
 	>();
 	private layoutName: BackendConstructOptions["layout"];
-	/** Sims are moving from construction until the vendor says done. */
+	/** Sims are moving from construction until the renderer says done. */
 	private layoutMoving: boolean;
 	private lastPositionsSample: Record<string, { x: number; y: number }> | null =
 		null;
@@ -223,7 +225,7 @@ export class NvlBackend implements GraphBackend {
 	): void {
 		this.instance.setNodePositions(positions, animate);
 	}
-	/** Pin ops (tm #1120) — vendor-verified on 1.2.0: pinNode drives
+	/** Pin ops — renderer-verified behavior: pinNode drives
 	 *  nodes.update([{id, pinned:true}]) so a sim never yanks the node back.
 	 *  Under `free` these are near-no-ops (positions are already authoritative);
 	 *  guarded because the injected instance is a structural type. */
@@ -242,7 +244,7 @@ export class NvlBackend implements GraphBackend {
 		}
 		const resolvedRels = rels.map((r) => this.withResolvedColor(r));
 		// Snapshot each rel's BASE style (post var-resolution) so selection
-		// salience restores the subdued base exactly on deselect (#1097).
+		// salience restores the subdued base exactly on deselect.
 		// Selection flips bypass THIS method (they hit the instance directly),
 		// so the snapshot only ever captures base ingest style, never salience.
 		for (const r of resolvedRels) {
@@ -292,9 +294,9 @@ export class NvlBackend implements GraphBackend {
 		return [...this.selected];
 	}
 	setSelectedNodeIds(ids: string[]): void {
-		// Selection is the ONE lawful highlight (law 13) — it must actually
-		// REACH the renderer. The pre-fix internal-Set-only version made every
-		// tap invisible on canvas (founder walk, 2026-07-17): NVL draws its
+		// Selection is the ONE authoritative highlight — it must actually
+		// REACH the renderer. A Set-only implementation would leave every
+		// tap invisible on canvas: the renderer draws its
 		// selection ring from the per-element `selected` flag, so push the
 		// delta (and only the delta) into the instance.
 		const next = new Set(ids.map(String));
@@ -311,8 +313,8 @@ export class NvlBackend implements GraphBackend {
 		}
 	}
 	setSelectedRelIds(ids: string[]): void {
-		// #1081 + #1097 — incident/explicit edges ride the same delta-push path
-		// as node selection (NVL draws rel emphasis from the per-element
+		// Incident/explicit edges ride the same delta-push path
+		// as node selection (the renderer draws rel emphasis from the per-element
 		// `selected` flag), AND carry explicit salience: the flip-to-selected
 		// lifts a bright colour + boosted width (the built-in flag alone is
 		// invisible on the subdued base), the flip-to-deselected restores the
@@ -386,13 +388,13 @@ export class NvlBackend implements GraphBackend {
 		this.instance.setRenderer(renderer);
 	}
 	isLayoutMoving(): boolean {
-		// `free` settle is known at load (#1055 — the old `layout !== "free"`
-		// stub returned true FOREVER under a sim, so settle could never be
+		// `free` settle is known at load (a naive `layout !== "free"` stub that
+		// always returns true under a sim would mean settle could never be
 		// observed). Sims settle by EITHER signal:
-		//  - vendor onLayoutDone (fast path, when NVL emits it), or
-		//  - position quiescence: NVL's bundled d3Force runs with alphaDecay 0
-		//    (prod-observed 2026-07-17: onLayoutDone never fired on the FX
-		//    mount), so motion is judged from observed positions — settled
+		//  - renderer onLayoutDone (fast path, when the renderer emits it), or
+		//  - position quiescence: the renderer's bundled d3Force runs with
+		//    alphaDecay 0 and onLayoutDone is not guaranteed to fire, so motion
+		//    is judged from observed positions — settled
 		//    after 10 consecutive stable samples (ε 0.01 world units,
 		//    sub-pixel at max zoom; callers poll per rAF ⇒ ~160ms stable).
 		// Sampling is O(N) per call, only while unsettled, on ≤2k-node sims

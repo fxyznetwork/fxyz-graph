@@ -1,15 +1,16 @@
 /**
- * Minimap — the workbench navigability chrome the legacy view had and the
- * engine pane lacked (consumer-wiring audit 2026-07-21, top gap #1).
+ * Minimap — the workbench navigability chrome an earlier legacy view had and
+ * the engine pane lacked.
  *
  * Design: the node field is drawn ONCE per payload into an offscreen bitmap
- * (positions never move under `free` — server-position law), so the per-frame
- * cost during pan/zoom is one drawImage + one stroked rect. All world↔map
- * math is pure and exported for the law harness; the viewport rect derives
- * from the SAME center-origin transform the renderer uses (view.ts seam).
+ * (positions never move under `free` — server-position invariant), so the
+ * per-frame cost during pan/zoom is one drawImage + one stroked rect. All
+ * world↔map math is pure and exported for the test suite; the viewport rect
+ * derives from the SAME center-origin transform the renderer uses (view.ts
+ * seam).
  *
  * Interaction: press or drag jumps the camera (pan-only — zoom stays the
- * member's own gesture, same law as the tap tween). Pointer events stop at
+ * member's own gesture, same rule as the tap tween). Pointer events stop at
  * the minimap so the pane underneath never also pans.
  */
 
@@ -100,10 +101,10 @@ export function mapToWorld(
 	};
 }
 
-/** Clamp a world point to the projection's bounds (tm #1132) — a press in
- *  the letterboxed map margin extrapolated PAST the world edge and landed
- *  the camera in pure void (live-verified 2026-07-21). Jumps stop at the
- *  nearest world edge instead. */
+/** Clamp a world point to the projection's bounds — a press in the
+ *  letterboxed map margin could otherwise extrapolate PAST the world edge
+ *  and land the camera in pure void. Jumps stop at the nearest world edge
+ *  instead. */
 export function clampToWorld(
 	p: MapProjection,
 	x: number,
@@ -115,8 +116,8 @@ export function clampToWorld(
 	};
 }
 
-/** Minimum drawn viewport-rect size (tm #1132) — at deep zoom on a large
- *  world the true rect goes sub-pixel and the location cue vanishes. */
+/** Minimum drawn viewport-rect size — at deep zoom on a large world the
+ *  true rect goes sub-pixel and the location cue vanishes. */
 const MIN_RECT_W = 6;
 const MIN_RECT_H = 4;
 

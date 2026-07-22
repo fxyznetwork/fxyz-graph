@@ -1,15 +1,14 @@
 /**
- * The salvaged nucleus (NVL-UNDERUSE-AUDIT §4 "keep-as-law → extract"):
- * incremental diff/apply ported from
- * `packages/visualization/src/hooks/useNVLInstance.ts:181-222` — the ONE
- * piece of the 2024 adapter verified sound. Lineage preserved:
+ * Incremental diff/apply for element updates — the one path that must never
+ * regress to a full teardown/rebuild. Lineage preserved:
  *
  * - Ids are String-coerced on BOTH sides so a number/string drift between a
  *   backend's stored ids and pipeline ids can never silently skip a removal —
- *   the #791 accumulation class ("adds new nodes, never removes absent ones").
+ *   the classic accumulation bug class ("adds new nodes, never removes
+ *   absent ones").
  * - Remove-then-add is the single source of truth for updates; re-applying
- *   identical data is a no-op removal + idempotent upsert (engine law 8:
- *   incremental only, a data change never reconstructs the instance).
+ *   identical data is a no-op removal + idempotent upsert (incremental only:
+ *   a data change never reconstructs the instance).
  */
 
 import type {

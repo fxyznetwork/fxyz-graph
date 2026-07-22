@@ -21,11 +21,22 @@ Thanks for your interest in improving these packages.
 
 1. Fork and branch from `main`.
 2. Keep changes focused — one concern per PR.
-3. Match the surrounding code style. Formatting and linting use **Biome**
-   (`pnpm biome check --write`).
+3. Match the surrounding code style (tabs for indentation, as in the existing
+   sources).
 4. Add or update tests for behavior changes.
-5. Make sure `pnpm build`, `pnpm test`, and typecheck pass.
+5. Make sure the checks below all pass before opening the PR.
 6. Write a clear PR description: what changed and why.
+
+## Checks
+
+There is no separate linter/formatter config — the gates are type-checking and
+the test suites:
+
+```sh
+pnpm build       # tsup build across all packages
+pnpm typecheck   # tsc --noEmit across all packages
+pnpm test        # jest test suites
+```
 
 ## Local development
 

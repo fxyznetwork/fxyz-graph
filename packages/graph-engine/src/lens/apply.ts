@@ -1,10 +1,10 @@
 /**
- * Lens runtime primitives (engine laws 14/16; audit RC5 per-toggle restyle).
+ * Lens runtime primitives.
  *
  * Styling is computed as per-node PATCHES and diffed — a lens/filter toggle
  * re-pushes only the nodes whose style actually changed, never the whole
- * graph (the 2024 adapter re-ran an O(N+E) restyle + full re-push per
- * toggle).
+ * graph (a naive implementation would re-run an O(N+E) restyle + full
+ * re-push per toggle).
  */
 
 import type {
@@ -20,14 +20,14 @@ export interface StylePatch {
 	brightness?: number;
 	edgeClass?: string;
 	shape?: string;
-	/** Provenance rendering (law 16): illustrative data is visually distinct. */
+	/** Provenance rendering: illustrative data is visually distinct. */
 	dashed?: boolean;
 	provenanceBadge?: Provenance;
 }
 
 /**
- * Provenance is a visual primitive (money-map law 1 / engine law 16):
- * dashed = illustrative, solid = real; stale/unmeasured carry their badge.
+ * Provenance is a visual primitive: dashed = illustrative, solid = real;
+ * stale/unmeasured carry their badge.
  */
 export function provenanceVisual(provenance: Provenance): StylePatch {
 	return {
@@ -40,7 +40,7 @@ function readSource(
 	node: GraphNodeV1,
 	source: StyleRule["source"],
 ): number | undefined {
-	if (source.startsWith("prop:")) return undefined; // property channel lands in P2
+	if (source.startsWith("prop:")) return undefined; // property channel is not yet wired for numeric reads
 	const value =
 		node.measures?.[source as keyof NonNullable<typeof node.measures>];
 	return typeof value === "number" ? value : undefined;
@@ -53,7 +53,7 @@ export function sizeFromValue(value: number, min = 6, max = 48): number {
 }
 
 /**
- * Categorical community palette (#1082): the five locked Stellar v3 hues plus
+ * Categorical community palette: five base hues plus
  * five derived shades (10 total) — concrete hex, so the backend colour boundary
  * passes them straight through (no CSS-var resolution needed). Community
  * membership is nominal, not ordinal, so the mapping is a stable hash, never a
@@ -61,11 +61,11 @@ export function sizeFromValue(value: number, min = 6, max = 48): number {
  * reloads, and distinct refs spread across the wheel.
  */
 export const COMMUNITY_PALETTE = [
-	"#fbbc7a", // Stellar amber (florin)
-	"#e87044", // Stellar orange
-	"#64be25", // Stellar green
-	"#aec2f8", // Stellar periwinkle
-	"#5c7ad3", // Stellar blue
+	"#fbbc7a", // amber
+	"#e87044", // orange
+	"#64be25", // green
+	"#aec2f8", // periwinkle
+	"#5c7ad3", // blue
 	"#c8894a", // amber, darker
 	"#f4a07f", // orange, lighter
 	"#3f7d17", // green, darker
@@ -101,7 +101,7 @@ export function applyStyleRules(
 		const patch: StylePatch = provenanceVisual(node.provenance);
 		for (const rule of rules) {
 			if (rule.channel === "color") {
-				// Categorical community coloring (#1082): a node's
+				// Categorical community coloring: a node's
 				// version-qualified community ref maps deterministically to a
 				// concrete palette hue. Nodes with NO community keep whatever the
 				// lens default left (an earlier role rule, else bare) — never

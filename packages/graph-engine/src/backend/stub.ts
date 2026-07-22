@@ -1,7 +1,7 @@
 /**
  * In-memory backend — the contract-test double that keeps the renderer seam
- * honest (engine law 12). Also records an op log so laws 8/14 can assert
- * incremental behavior (diff ops, never reconstruction).
+ * honest. Also records an op log so the engine's incremental-update
+ * invariants can be asserted (diff ops, never reconstruction).
  */
 
 import {
@@ -107,7 +107,7 @@ export class StubBackend implements GraphBackend {
 		this.ops.push({ op: "unPinNode", detail: id });
 		this.pinned.delete(String(id));
 	}
-	/** Test helper: currently-pinned ids (tm #1120 law assertions). */
+	/** Test helper: currently-pinned ids (used for pin/unpin invariant assertions). */
 	pinnedIds(): string[] {
 		return [...this.pinned];
 	}

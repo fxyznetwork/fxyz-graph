@@ -1,16 +1,16 @@
 /**
- * tm #1098 — K-calibration size law, locked as tests.
+ * K-calibration size, locked as tests.
  *
- * Measured 2026-07-19 (scripts/graph/nvl-k-harness.html, canvas renderer,
- * exact at zoom 1 AND 2): NVL draws `size` as a RADIUS with NO dpr division
- * (css_radius = size · Z) while positions map through css = (Z/dpr)·(world −
- * pan) + c/2. Raw lens sizes therefore render at size·dpr WORLD radius — 2×
- * the intended diameter at dpr 1, 4× at dpr 2 (the public-overview "lump").
+ * Measured against the canvas renderer, exact at zoom 1 AND 2: the renderer
+ * draws `size` as a RADIUS with NO dpr division (css_radius = size · Z)
+ * while positions map through css = (Z/dpr)·(world − pan) + c/2. Raw lens
+ * sizes therefore render at size·dpr WORLD radius — 2× the intended diameter
+ * at dpr 1, 4× at dpr 2 (a visibly oversized node cloud).
  *
- * Law: the NVL boundary hands the vendor `size/(2·dpr)`, making the engine's
- * size channel a true dpr-independent world-space DIAMETER — drawn world
- * radius = size/2, matching precompute-positions' overviewRadius and
- * GraphPane's label anchorRadius (size/2) exactly.
+ * Rule: the backend boundary hands the renderer `size/(2·dpr)`, making the
+ * engine's size channel a true dpr-independent world-space DIAMETER —
+ * drawn world radius = size/2, matching GraphPane's label anchorRadius
+ * (size/2) exactly.
  */
 
 import type { BackendConstructOptions } from "../backend/contract";
@@ -46,7 +46,7 @@ function makeFakeNvl() {
 
 const g = globalThis as { devicePixelRatio?: number };
 
-describe("#1098 · NVL boundary normalizes size to a world-space diameter", () => {
+describe("renderer boundary normalizes size to a world-space diameter", () => {
 	afterEach(() => {
 		g.devicePixelRatio = undefined;
 	});
@@ -65,7 +65,7 @@ describe("#1098 · NVL boundary normalizes size to a world-space diameter", () =
 		expect(nodePatches.map((n) => n.size)).toEqual([12, 1.5]);
 	});
 
-	it("divides size by 2 at dpr 1 (vendor size = radius, ours = diameter)", () => {
+	it("divides size by 2 at dpr 1 (renderer size = radius, ours = diameter)", () => {
 		g.devicePixelRatio = undefined; // node env — deviceDpr() falls back to 1
 		const { instance, nodePatches } = makeFakeNvl();
 		const backend = new NvlBackend(OPTS, () => instance);

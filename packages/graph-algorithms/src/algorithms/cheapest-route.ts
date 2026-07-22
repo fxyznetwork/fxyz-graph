@@ -9,12 +9,12 @@
  * detection is the sibling `negative-cycles` registry row (negative-cycles.ts),
  * which shares this file's `edgeCost` weight convention.
  *
- * A server-side implementation of the same logic (`rateToWeight` +
- * `bellmanFord` over live FX rate data in Neo4j) can run as a `server-cypher`
- * venue. This adapter is the pure, dependency-free re-expression over the
- * generic `SubGraph`, so the SAME routing logic is one registry row a
- * `client-ts` venue can run on the loaded working set. It shares the
- * algorithm, not the code (no neo4j import).
+ * A server-side implementation of the same logic (weight conversion +
+ * Bellman-Ford over live FX rate data in a graph database) can run as a
+ * `server-query` venue. This adapter is the pure, dependency-free re-expression
+ * over the generic `SubGraph`, so the SAME routing logic is one registry row a
+ * `client-ts` venue can run on the loaded working set. It shares the algorithm,
+ * not the code (no database import).
  *
  * Sibling demonstration: this `fx-routing` row and the `centrality` row live in
  * ONE registry under ONE `run(workingSet, params) => Promise<AlgoResult>`
@@ -122,7 +122,7 @@ export const cheapestRoute: Algorithm<CheapestRouteParams> = {
 		source: { kind: "nodeId", label: "From", required: true },
 		target: { kind: "nodeId", label: "To", required: true },
 	},
-	venues: ["client-ts", "server-cypher"],
+	venues: ["client-ts", "server-query"],
 	maxWorkingSet: { "client-ts": 20_000 },
 	defaultEncodingChannel: "foreground",
 	resultKind: "paths",

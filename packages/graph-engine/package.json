@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
-	"description": "Graph-engine — the headless graph controller. Incremental ingest→diff→apply, server-positions-first layout policy, id-keyed identity/selection stores, throttled spatial-index interaction, budgeted labels, a lens runtime with incremental styling deltas, and renderers as swappable BACKENDS behind an observable-API contract (a stub backend ships in this package; an NVL adapter is wired via an injected constructor; other renderers slot in the same way). A suite of interaction-law acceptance tests ships in this package — features come after laws.",
+	"description": "Graph-engine — the headless graph controller. Incremental ingest→diff→apply, server-positions-first layout policy, id-keyed identity/selection stores, throttled spatial-index interaction, budgeted labels, a lens runtime with incremental styling deltas, and renderers as swappable BACKENDS behind an observable-API contract (a stub backend ships in this package; a rendering-library adapter is wired via an injected constructor; other renderers slot in the same way). A suite of interaction-invariant acceptance tests ships in this package — features come after invariants.",
 	"main": "dist/index.cjs",
 	"module": "dist/index.js",
 	"types": "dist/index.d.ts",
@@ -35,14 +35,23 @@
 		"headless",
 		"renderer",
 		"backend",
-		"nvl",
 		"lens"
 	],
-	"author": "ƒxyz ℕetwork",
-	"license": "MIT",
+	"author": "fxyz network",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fxyznetwork/fxyz-graph.git"
+	},
+	"homepage": "https://github.com/fxyznetwork/fxyz-graph/tree/main/packages/graph-engine#readme",
+	"bugs": {
+		"url": "https://github.com/fxyznetwork/fxyz-graph/issues"
+	},
+	"engines": {
+		"node": ">=22"
+	},
 	"dependencies": {
-		"@fxyz/graph-contract": "workspace:*",
-		"@fxyz/graph-layout": "workspace:*"
+		"@fxyz/graph-contract": "workspace:*"
 	},
 	"peerDependencies": {
 		"react": "^19.2.6"

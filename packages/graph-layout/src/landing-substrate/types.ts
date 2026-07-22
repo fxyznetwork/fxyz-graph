@@ -1,5 +1,5 @@
 /**
- * Landing-substrate types — extends `@fxyz/graph-layout` SubstrateNode
+ * Types for the landing graph slice — extends `@fxyz/graph-layout` SubstrateNode
  * with force-layout positions and Louvain community assignment.
  */
 
@@ -7,8 +7,8 @@ import type { SubstrateData, SubstrateNode, SubstrateNodeKind } from "../types";
 
 export type { SubstrateNode, SubstrateNodeKind } from "../types";
 
-/** Color assignment from the Stellar palette (`packages/design-system/lib/brand-colors.ts`). */
-export type StellarTone = "florin" | "joule" | "wisdom" | "network" | "earth";
+/** A tone slot from the palette — resolved to concrete hex on each community. */
+export type PaletteTone = "amber" | "gold" | "violet" | "blue" | "green";
 
 export interface LandingCommunity {
 	id: string;
@@ -17,8 +17,8 @@ export interface LandingCommunity {
 	/** Optional Louvain sub-cluster id when communities are sub-partitioned. */
 	louvainId?: number;
 	size: number;
-	tone: StellarTone;
-	/** OKLCH-tuned hex from Brand Codex v3.0 (`brand-colors.ts`). */
+	tone: PaletteTone;
+	/** Concrete hex for this community. */
 	color: string;
 	/** Strong-tier hex for text-on-light contrast. */
 	strongColor: string;
@@ -30,18 +30,17 @@ export interface PositionedNode extends SubstrateNode {
 	z: number;
 	/** Resolved community id (matches LandingCommunity.id). */
 	communityId: string;
-	/** Stellar tone derived from the community. */
-	tone: StellarTone;
+	/** Palette tone derived from the community. */
+	tone: PaletteTone;
 	/**
-	 * Deterministic 2D close-layout position `[x, y]`, rounded to 2 decimals
-	 * (Wave C — close-v2.md §5 req 3 + 9). Seeded from this node's substrate
-	 * (x, y) and relaxed with link + collision forces server-side
-	 * (`runCloseLayout2d`), so the 3D→2D crossfade descends from the same
-	 * shape and proximity encodes adjacency (hub-spoke ego stars).
+	 * Deterministic 2D close-layout position `[x, y]`, rounded to 2 decimals.
+	 * Seeded from this node's (x, y) and relaxed with link + collision forces
+	 * server-side (`runCloseLayout2d`), so a 3D→2D crossfade descends from the
+	 * same shape and proximity encodes adjacency (hub-spoke stars).
 	 *
-	 * PRESENT iff the node has degree ≥ 1 in the slice. Degree-0 dust is
-	 * excluded from the 2D sim — the close consumer dust-drops it anyway
-	 * (#106); a missing `close2d` IS the unambiguous dust signal.
+	 * PRESENT iff the node has degree ≥ 1 in the slice. Degree-0 nodes are
+	 * excluded from the 2D sim, so a missing `close2d` is the unambiguous
+	 * "isolated" signal.
 	 */
 	close2d?: [number, number];
 }

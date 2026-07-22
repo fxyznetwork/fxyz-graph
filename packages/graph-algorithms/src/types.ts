@@ -13,7 +13,7 @@
  * venue.ts.
  *
  * This module is intentionally dependency-light (no database client, no
- * react, no three) so the SAME contract is importable by both a server
+ * rendering library) so the SAME contract is importable by both a server
  * resolver and a client engine. The `Promise` return is the load-bearing
  * trick: it makes client-vs-server an implementation detail rather than an
  * interface decision.
@@ -44,10 +44,9 @@ export interface GraphEdge {
 }
 
 /**
- * The loaded working set an algorithm runs over. This is the unit GraphXR /
- * Ogma / Cambridge-Intelligence all compute on — the subgraph currently in
- * scope, not the whole database. Whole-graph venues (cron/GDS) materialize a
- * working set the same shape.
+ * The loaded working set an algorithm runs over — the subgraph currently in
+ * scope, not the whole database. Whole-graph venues (a nightly job, or a
+ * native graph-database procedure) materialize a working set of the same shape.
  */
 export interface SubGraph {
 	nodes: GraphNode[];
@@ -82,8 +81,8 @@ export type ResultKind =
 /**
  * The closed union every algorithm returns. The renderer never sees the
  * algorithm — it sees the result, and the Encoding Bridge (a separate layer)
- * maps `kind` to a visual-grammar channel. This is the GraphXR/Ogma
- * "algorithm writes a value, the encoder reads it" contract.
+ * maps `kind` to a visual channel. The algorithm writes a value; the encoder
+ * reads it.
  */
 export type AlgoResult =
 	/** centrality, synthesis, λ2 — a per-node scalar. */
@@ -113,19 +112,19 @@ export type AlgorithmFamily =
  *
  * - `client-ts`        : pure TS over the in-browser working set (how eigenvector
  *                        + DebtRank centrality can run entirely client-side).
- * - `server-cypher`    : a Neo4j Cypher implementation (how Bellman-Ford routing
- *                        can run server-side over a live graph).
+ * - `server-query`     : a server-side graph-query implementation (how Bellman-Ford
+ *                        routing can run over a live graph).
  * - `precomputed-cron` : heavy whole-graph metrics materialized nightly onto
- *                        node properties (the repurposed memgraph-sync slot).
- * - `server-gds`       : Neo4j Graph Data Science procedures. Declared-but-only-
- *                        selected once the GDS plugin is installed; enabling it
- *                        is config + one availability flag, zero interface change.
+ *                        node properties.
+ * - `server-native`    : native graph-database procedures. Declared-but-only-
+ *                        selected once that engine is available; enabling it is
+ *                        config + one availability flag, zero interface change.
  */
 export type Venue =
 	| "client-ts"
-	| "server-cypher"
+	| "server-query"
 	| "precomputed-cron"
-	| "server-gds";
+	| "server-native";
 
 /**
  * How an AlgoResult binds to the visual grammar. Channels map by result kind:
@@ -175,12 +174,12 @@ export interface Algorithm<P = Record<string, never>> {
 	/** The result kind this algorithm always returns (matches `run`). */
 	resultKind: ResultKind;
 	/**
-	 * REQUIRED for ƒxyz-coined metrics (e.g. R0, circle temperature). The
-	 * registry refuses to register a coinage whose :Concept is not active
-	 * (operator-hud-grounding enforced at registration time). Published
-	 * algorithms (PageRank, Louvain, Bellman-Ford, …) leave this undefined.
+	 * Optional gate key. When set, the registry refuses to register this
+	 * algorithm unless the injected registration guard approves the key — use
+	 * it for algorithms that need sign-off before they can ship. Standard
+	 * published algorithms (PageRank, Louvain, Bellman-Ford, …) leave it unset.
 	 */
-	groundingConceptId?: string;
+	guardKey?: string;
 	/** The computation. `Promise` makes venue an implementation detail. */
 	run: (workingSet: SubGraph, params: P) => Promise<AlgoResult>;
 }

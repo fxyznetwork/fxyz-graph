@@ -1,8 +1,9 @@
 /**
- * Label declutter laws (product audit 2026-07-20 — public-overview "text
- * soup"). Pure-machine tests over the exported cull geometry: near-touching
- * labels must COLLIDE (the cull margin is the fix), distant labels must not,
- * and the greedy order means the more salient label survives.
+ * Label declutter behavior, addressing an overview that reads as "text
+ * soup" when labels crowd together. Pure-machine tests over the exported
+ * cull geometry: near-touching labels must COLLIDE (the cull margin is the
+ * fix), distant labels must not, and the greedy order means the more
+ * salient label survives.
  */
 
 import {
@@ -22,7 +23,7 @@ function placed(x: number, y: number, label = "United States of America · bank"
 	};
 }
 
-describe("label cull geometry (#text-soup fix)", () => {
+describe("label cull geometry (text-soup fix)", () => {
 	it("two long labels stacked 20px apart collide — tight glyph boxes let them pile", () => {
 		const a = placed(400, 300);
 		const b = placed(400, 320);

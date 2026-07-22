@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
-	"description": "Graph-algorithms — the first-class, venue-agnostic algorithm layer for ƒxyz. One typed registry where FX algorithms (routing, arbitrage) and graph algorithms (centrality, community, pathfinding) are siblings under a uniform run(workingSet, params) => Promise<AlgoResult> contract. Pure + dependency-light so it is importable by BOTH the server resolver and the client engine.",
+	"description": "Graph-algorithms — a first-class, venue-agnostic algorithm layer. One typed registry where FX algorithms (routing, arbitrage) and graph algorithms (centrality, community, pathfinding) are siblings under a uniform run(workingSet, params) => Promise<AlgoResult> contract. Pure + dependency-light so it is importable by BOTH a server resolver and a client engine.",
 	"main": "dist/index.cjs",
 	"module": "dist/index.js",
 	"types": "dist/index.d.ts",
@@ -40,8 +40,19 @@
 		"registry",
 		"venue"
 	],
-	"author": "ƒxyz ℕetwork",
-	"license": "MIT",
+	"author": "fxyz network",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fxyznetwork/fxyz-graph.git"
+	},
+	"homepage": "https://github.com/fxyznetwork/fxyz-graph/tree/main/packages/graph-algorithms#readme",
+	"bugs": {
+		"url": "https://github.com/fxyznetwork/fxyz-graph/issues"
+	},
+	"engines": {
+		"node": ">=22"
+	},
 	"devDependencies": {
 		"@swc/core": "^1.15.40",
 		"@swc/jest": "^0.2.39",

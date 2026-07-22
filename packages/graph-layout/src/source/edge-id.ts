@@ -1,21 +1,16 @@
 /**
- * Deterministic edge ids for the v0 slice identity space, in the
+ * Deterministic edge ids for the slice identity space, byte-compatible with the
  * @fxyz/graph-contract EdgeId grammar (refs.ts makeEdgeId):
  *
  *   edge:{type}:{source}→{target}[:{discriminator}]
  *
- * v0 slice keys are pre-ref (no `kind:` prefix — "USD", "brazil", concept
- * ids), so the typed contract maker can't be used yet without lying about
- * ref-ness. Grammar parity with makeEdgeId is locked by edge-id.test.ts;
- * the contract-native v1 slice replaces this with makeEdgeId over real
- * GraphRefs (tm #1003).
+ * Slice keys are bare strings ("USD", "brazil", concept ids) rather than typed
+ * GraphRefs, so this local maker is used instead of the typed contract one;
+ * grammar parity with makeEdgeId is locked by edge-id.test.ts.
  *
- * Replaces the deprecated Neo4j `id(r)` integer key (least-durable scheme
- * in the estate — values change on any DB restore/repopulation). These ids
- * are stable across refetches for the same logical edge; parallel edges of
- * the same type between the same endpoints collapse to one id, so mappers
- * MUST dedupe on it (the v0 slice carries no per-edge properties, so the
- * duplicates carried no information).
+ * These ids are stable across refetches for the same logical edge. Parallel
+ * edges of the same type between the same endpoints collapse to one id, so
+ * mappers MUST dedupe on it.
  */
 export function sliceEdgeId(
 	type: string,

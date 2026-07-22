@@ -9,7 +9,7 @@ import {
 	parseRef,
 } from "../refs";
 
-describe("GraphRef minting (ID LAW — engine law 13)", () => {
+describe("GraphRef minting (stable identity)", () => {
 	it("mints kind:key refs and round-trips through parseRef", () => {
 		const ref = makeRef("currency", "EUR");
 		expect(ref).toBe("currency:EUR");
@@ -20,7 +20,7 @@ describe("GraphRef minting (ID LAW — engine law 13)", () => {
 		expect(makeRef("star", "HIP24436")).toBe("star:HIP24436");
 	});
 
-	it("REJECTS the positional-synthetic member pattern (codex 2)", () => {
+	it("REJECTS the positional-synthetic member pattern", () => {
 		expect(() => makeRef("star", "member-giant-42")).toThrow(GraphRefViolation);
 		expect(() => makeRef("member", "member-dwarf-7")).toThrow(
 			GraphRefViolation,
@@ -47,7 +47,7 @@ describe("GraphRef minting (ID LAW — engine law 13)", () => {
 	});
 });
 
-describe("community refs are version-qualified and ephemeral (codex 4)", () => {
+describe("community refs are version-qualified and ephemeral", () => {
 	it("carries the dataVersion in the key", () => {
 		expect(makeCommunityRef("2026-07-15", 42)).toBe("community:v2026-07-15-42");
 	});
@@ -60,7 +60,7 @@ describe("community refs are version-qualified and ephemeral (codex 4)", () => {
 	});
 });
 
-describe("corridor refs are direction-preserving and qualified (codex 4)", () => {
+describe("corridor refs are direction-preserving and qualified", () => {
 	it("normalizes spelling but preserves direction", () => {
 		expect(makeCorridorRef({ send: "eur", receive: "brl" })).toBe(
 			"corridor:EUR→BRL",
@@ -80,7 +80,7 @@ describe("corridor refs are direction-preserving and qualified (codex 4)", () =>
 	});
 });
 
-describe("edge ids are deterministic with discriminators (codex 8)", () => {
+describe("edge ids are deterministic with discriminators", () => {
 	const a = makeRef("currency", "EUR");
 	const b = makeRef("currency", "BRL");
 	it("is stable for the same inputs", () => {

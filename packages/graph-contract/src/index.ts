@@ -15,8 +15,8 @@ export {
 } from "./budgets";
 
 export {
-	CANON_STATUSES,
-	type CanonStatus,
+	NODE_STATUSES,
+	type NodeStatus,
 	DATA_ROLES,
 	type DataRole,
 	MEASURE_KINDS,

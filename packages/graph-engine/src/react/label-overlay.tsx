@@ -1,18 +1,18 @@
 /**
- * Budgeted DOM label overlay v2 (engine law 6).
+ * Budgeted DOM label overlay v2.
  *
- * Labels are OURS by necessity — standalone NVL 1.2.0 renders zero captions
- * in any mode (vendor defect, measured 2026-07-15). Per-frame label count is
- * bounded by the lens/tier budget via pickLabeledNodes, independent of graph
- * size. Positioning is CSS-transform only (no layout thrash); the parent owns
- * WHEN positions refresh (its view state).
+ * Labels are OURS by necessity — the renderer draws zero captions in any
+ * mode (a known limitation of the underlying graph renderer). Per-frame
+ * label count is bounded by the lens/tier budget via pickLabeledNodes,
+ * independent of graph size. Positioning is CSS-transform only (no layout
+ * thrash); the parent owns WHEN positions refresh (its view state).
  *
- * v2 (founder walk 2026-07-17 — "labels are floating"): labels anchor to the
- * node's screen-space BOTTOM EDGE (center + radius, not center + 8px), carry
- * a rank hierarchy (the budget order is a salience order — top labels render
- * larger and brighter), collide greedily (a less salient label that would
- * overlap a kept one is culled, not stacked), and sit on a halo shadow so
- * they stay legible over edge crossings.
+ * v2 (previously labels drifted visibly off their nodes): labels anchor to
+ * the node's screen-space BOTTOM EDGE (center + radius, not center + 8px),
+ * carry a rank hierarchy (the budget order is a salience order — top labels
+ * render larger and brighter), collide greedily (a less salient label that
+ * would overlap a kept one is culled, not stacked), and sit on a halo
+ * shadow so they stay legible over edge crossings.
  */
 
 import type { GraphNodeV1 } from "@fxyz/graph-contract";
@@ -66,19 +66,18 @@ export interface PlacedLabel {
 /**
  * Breathing room around each label during collision culling. Tight glyph
  * boxes let 240px-wide lines stack ~16px apart without "intersecting" — which
- * on the public overview read as an unreadable pile (product audit
- * 2026-07-20, "text soup"). The margin makes near-touching labels collide,
- * so density self-adapts to zoom: zoomed out, more candidates collide and
- * only the salient survive; zoomed in, space opens and more labels return.
+ * on the public overview reads as an unreadable pile of text. The margin
+ * makes near-touching labels collide, so density self-adapts to zoom: zoomed
+ * out, more candidates collide and only the salient survive; zoomed in,
+ * space opens and more labels return.
  */
 const CULL_MARGIN_X = 12;
 const CULL_MARGIN_Y = 8;
 
 /**
  * Engine behavior mark, stamped on the overlay root as `data-engine`. Bump on
- * every behavior-visible engine change. Exists because prod walks 2026-07-21
- * caught DEPLOYED BUNDLES serving pre-fix engine behavior while their
- * SOURCE_COMMIT contained the fix (tm #1113 — build-cache staleness): with
+ * every behavior-visible engine change. Exists so that stale deployed
+ * bundles serving pre-fix behavior can be told apart from fresh ones: with
  * this mark, `document.querySelector('[data-graphpane-labels]').dataset
  * .engine` answers "which engine is this surface actually running" in one
  * probe, no behavior forensics needed.
@@ -86,9 +85,10 @@ const CULL_MARGIN_Y = 8;
 export const ENGINE_BUILD_MARK = "e12-drag-pin";
 
 /**
- * Pure viewport clamp for a label's center-x (exported for law tests): slide
- * inward so the box stays whole — attached beats amputated. Panes narrower
- * than one label keep the anchor center (nothing sensible to clamp to).
+ * Pure viewport clamp for a label's center-x (exported for the test suite):
+ * slide inward so the box stays whole — attached beats amputated. Panes
+ * narrower than one label keep the anchor center (nothing sensible to clamp
+ * to).
  */
 export function clampLabelX(
 	x: number,
@@ -106,7 +106,7 @@ export function clampLabelX(
 }
 
 /** Approximate label box for greedy collision culling (mono ≈ 0.62em/char),
- *  inflated by the cull margins. Exported for the declutter law tests. */
+ *  inflated by the cull margins. Exported for the declutter test suite. */
 export function labelRect(p: PlacedLabel): {
 	left: number;
 	right: number;
@@ -139,12 +139,12 @@ export interface LabelOverlayProps {
 	width: number;
 	height: number;
 	/**
-	 * Chrome exclusion band, css px from the pane top (product audit
-	 * 2026-07-21: workbench scope tabs / the public lens switcher + hint sit
-	 * INSIDE the pane, and labels rendered straight through them — text
-	 * bleeding between the tab buttons). Labels whose anchored top falls
-	 * inside the band are culled; they re-enter as pan/zoom moves them out
-	 * (the cull is per-view). 0 = no band.
+	 * Chrome exclusion band, css px from the pane top (some surfaces' own
+	 * tabs / lens switcher + hint sit INSIDE the pane, and labels rendered
+	 * straight through them — text bleeding between the chrome buttons).
+	 * Labels whose anchored top falls inside the band are culled; they
+	 * re-enter as pan/zoom moves them out (the cull is per-view). 0 = no
+	 * band.
 	 */
 	topInset?: number;
 	className?: string;
@@ -173,8 +173,8 @@ export function LabelOverlay({
 		}
 		const radiusPx = (node.anchorRadius ?? 12.5) * scale;
 		const tier = tierFor(rank);
-		// Clamp into the viewport (mobile audit 2026-07-20): the cull sees the
-		// CLAMPED rect, so slid labels still claim honest space.
+		// Clamp into the viewport: the cull sees the CLAMPED rect, so slid
+		// labels still claim honest space.
 		const candidate: PlacedLabel = {
 			node,
 			x: clampLabelX(p.x, node.label.length, tier.fontSize, width),

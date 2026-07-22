@@ -1,14 +1,13 @@
 /**
- * Overview affordance train (founder walk 2026-07-17): the three defects that
- * made the public Overview feel dead, locked as tests —
+ * Overview affordance behaviors: three defects that made a public overview
+ * feel dead, locked as tests —
  *
  *  1. selection must REACH the renderer (the pre-fix backend kept it in an
  *     internal Set, so taps were invisible on canvas),
  *  2. lens colors must arrive as concrete colors (canvas/WebGL can't parse
  *     `var(--fx-role-*)` — the backend boundary resolves them),
  *  3. real names outrank synthesized "<label> cluster" fallbacks in the
- *     label budget, and identical generic text can't wall the overlay
- *     (#1071 direction 2).
+ *     label budget, and identical generic text can't wall the overlay.
  */
 
 import type { GraphNodeV1 } from "@fxyz/graph-contract";
@@ -48,8 +47,8 @@ function makeFakeNvl(): {
 	return { instance, updates };
 }
 
-describe("selection reaches the renderer (law 13 — the one lawful highlight)", () => {
-	it("pushes selected:true/false deltas into the NVL instance", () => {
+describe("selection reaches the renderer (the one lawful highlight)", () => {
+	it("pushes selected:true/false deltas into the renderer instance", () => {
 		const { instance, updates } = makeFakeNvl();
 		const backend = new NvlBackend(OPTS, () => instance);
 
@@ -154,7 +153,7 @@ describe("per-node role colors (prop:roles rule)", () => {
 	});
 });
 
-describe("named-first label budget (#1071)", () => {
+describe("named-first label budget", () => {
 	const mk = (
 		id: string,
 		label: string,

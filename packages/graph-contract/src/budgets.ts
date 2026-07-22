@@ -1,7 +1,7 @@
 /**
- * No folklore constants (engine law 11): every numeric threshold carries
- * provenance — a measured date + harness ref, or an explicit 'provisional'
- * marker. CI flags bare numbers; this type is the carrier.
+ * No folklore constants: every numeric threshold carries provenance — a
+ * measured date + source, or an explicit 'provisional' marker. This type is
+ * the carrier so bare magic numbers never enter the budget table.
  */
 
 import type { Tier } from "./payload";
@@ -9,7 +9,7 @@ import type { Tier } from "./payload";
 export interface ProvenancedNumber {
 	value: number;
 	provenance: "measured" | "provisional";
-	/** Where the number came from — harness path, audit doc, or 'guess'. */
+	/** Where the number came from — a measurement, a prior budget, or a guess. */
 	source: string;
 	/** ISO date when measured (required when provenance === 'measured'). */
 	measuredAt?: string;
@@ -21,58 +21,57 @@ export type TierBudgets = Record<
 >;
 
 /**
- * Default budgets (DESIGN-V2 §4 table). Injectable — consumers may override,
- * but overrides must themselves be ProvenancedNumbers.
+ * Default budgets. Injectable — consumers may override, but overrides must
+ * themselves be ProvenancedNumbers.
  */
 export const DEFAULT_TIER_BUDGETS: TierBudgets = {
 	peek: {
 		maxNodes: {
 			value: 60,
 			provenance: "provisional",
-			source: "DESIGN-V2 §4 — measure in P2 canary",
+			source: "starting budget — measure under real load",
 		},
 		labelBudget: {
 			value: 20,
 			provenance: "provisional",
-			source: "DESIGN-V2 §4",
+			source: "starting budget",
 		},
 	},
 	chip: {
 		maxNodes: {
 			value: 60,
 			provenance: "provisional",
-			source: "DESIGN-V2 §4 — measure in P2 canary",
+			source: "starting budget — measure under real load",
 		},
 		labelBudget: {
 			value: 20,
 			provenance: "provisional",
-			source: "DESIGN-V2 §4",
+			source: "starting budget",
 		},
 	},
 	tile: {
 		maxNodes: {
 			value: 200,
 			provenance: "measured",
-			source:
-				"dashboard-network-mini.tsx canvas budget (readable labels below WEBGL seam)",
+			source: "mini-canvas budget (readable labels below the WebGL seam)",
 			measuredAt: "2026-07-08",
 		},
 		labelBudget: {
 			value: 40,
 			provenance: "provisional",
-			source: "DESIGN-V2 §4",
+			source: "starting budget",
 		},
 	},
 	drawer: {
 		maxNodes: {
 			value: 300,
 			provenance: "provisional",
-			source: "GraphDrawer.tsx:137 existing budget — re-verify in P2",
+			source: "existing drawer budget — re-verify",
 		},
 		labelBudget: {
 			value: 80,
 			provenance: "measured",
-			source: "computeLabelLod research budget (graph-label-research.md)",
+			source: "label level-of-detail research budget",
 			measuredAt: "2026-06-20",
 		},
 	},
@@ -81,13 +80,13 @@ export const DEFAULT_TIER_BUDGETS: TierBudgets = {
 			value: 2000,
 			provenance: "measured",
 			source:
-				"fair benchmark addendum: canvas comfortable to ~1–2k (31fps @2k); WEBGL_THRESHOLD=500 directionally right",
+				"benchmark: canvas comfortable to ~1–2k (31fps @2k); a ~500-node WebGL threshold is directionally right",
 			measuredAt: "2026-07-15",
 		},
 		labelBudget: {
 			value: 120,
 			provenance: "measured",
-			source: "computeLabelLod research budget",
+			source: "label level-of-detail research budget",
 			measuredAt: "2026-06-20",
 		},
 	},
@@ -95,14 +94,13 @@ export const DEFAULT_TIER_BUDGETS: TierBudgets = {
 		maxNodes: {
 			value: 10_000,
 			provenance: "measured",
-			source:
-				"fair benchmark: clean NVL 60/60fps @10k (docs/audits/2026-07-15-graph-renderer-benchmark/results-fair.json); ALSO the tm#751 payload/OOM budget",
+			source: "benchmark: clean 60/60fps @10k on a WebGL renderer",
 			measuredAt: "2026-07-15",
 		},
 		labelBudget: {
 			value: 200,
 			provenance: "measured",
-			source: "fair benchmark: top-200 overlay ≈ free over WebGL cloud",
+			source: "benchmark: a top-200 overlay is ≈ free over a WebGL cloud",
 			measuredAt: "2026-07-15",
 		},
 	},
@@ -111,13 +109,13 @@ export const DEFAULT_TIER_BUDGETS: TierBudgets = {
 			value: 50_000,
 			provenance: "measured",
 			source:
-				"fair benchmark: 50k idle 55.5fps under free+precomputed (M1 Max CEILING — device-adaptive cap required; median-device re-run owed before final ruling)",
+				"benchmark: 50k idle at 55.5fps with free layout + precomputed positions (high-end device ceiling — a device-adaptive cap is recommended)",
 			measuredAt: "2026-07-15",
 		},
 		labelBudget: {
 			value: 200,
 			provenance: "measured",
-			source: "fair benchmark label overlay cells",
+			source: "benchmark label-overlay cells",
 			measuredAt: "2026-07-15",
 		},
 	},

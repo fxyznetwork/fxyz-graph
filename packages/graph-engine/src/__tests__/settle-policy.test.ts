@@ -1,6 +1,6 @@
 /**
- * Settle-policy laws (#1072) — pure machine, no DOM (house pattern, DESIGN-V2
- * §4). The bounded-settle contract: deadline adoption on a jittering sim,
+ * Settle-policy behavior — pure machine, no DOM (house pattern). The
+ * bounded-settle contract: deadline adoption on a jittering sim,
  * exactly one onSettled, one final correcting adoption at true quiescence.
  */
 
@@ -9,7 +9,7 @@ import {
 	settleStep,
 } from "../react/settle-policy";
 
-describe("settle policy (#1072 bounded settle)", () => {
+describe("settle policy (bounded settle)", () => {
 	it("free layouts never adopt — they fire once at first non-moving observation and stop", () => {
 		const action = settleStep({
 			isSim: false,

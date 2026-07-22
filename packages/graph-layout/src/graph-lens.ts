@@ -1,20 +1,17 @@
 /**
  * Graph lenses — client-side analytical re-readings of an already-loaded graph.
  *
- * A "lens" is the third axis of the unified graph model (SCOPE × FILTER × LENS):
- * it does not change WHICH data is loaded (that is SCOPE) nor WHICH node types
- * are visible (FILTER) — it changes HOW the loaded nodes are read, by recolouring
- * them according to a structural property computed from the nodes + links that
- * are already in hand. Because every lens computes from the in-context graph, a
- * lens needs no extra query and is orthogonal to scope: the same lens reads a
- * personal ego-graph, the whole network, or a star-centred view identically.
+ * A "lens" does not change WHICH data is loaded, nor WHICH node types are
+ * visible — it changes HOW the loaded nodes are read, by recolouring them
+ * according to a structural property computed from the nodes + links already in
+ * hand. Because every lens computes from the in-context graph, it needs no
+ * extra data load: the same lens reads a personal ego-graph, a whole network,
+ * or a single-node-centred view identically.
  *
- * Lenses here are colour-only — they emit a `Map<nodeId, hex>` consumed by
- * UnifiedGraph's existing `nodeColorOverrides` prop. (The FX lens — currency
- * correlation / MST / PMFG / arbitrage — is NOT here; it needs price data, so it
- * lives with the lab fold-in, P4.)
+ * Lenses here are colour-only — they emit a `Map<nodeId, hex>` a renderer can
+ * apply as per-node colour overrides.
  *
- * Algorithms are named + published (operator-hud-grounding.md "(c)"):
+ * Both lenses use named, published algorithms:
  *   - communities: Louvain modularity (Blondel, Guillaume, Lambiotte, Lefebvre,
  *     J. Stat. Mech. 2008) via graphology-communities-louvain.
  *   - core-periphery: k-core decomposition (Seidman, Social Networks 1983),
@@ -27,8 +24,8 @@ import louvain from "graphology-communities-louvain";
 export type GraphLens = "raw" | "communities" | "core-periphery";
 
 /** Minimal node shape a lens needs — a stable id, plus (optionally) the node's
- *  property record so lenses can prefer server-precomputed structure (e.g.
- *  `properties.louvainCommunity` from the #580 Louvain precompute) over a
+ *  property record so lenses can prefer server-precomputed structure (e.g. a
+ *  `properties.louvainCommunity` written by a server-side precompute) over a
  *  client-side recompute. Callers that pass bare `{ id }` nodes keep the full
  *  client-side behaviour. */
 export interface LensNode {
@@ -45,9 +42,9 @@ export interface LensLink {
 export type LensTheme = "light" | "dark";
 
 /**
- * Distinct functional hues for the Louvain communities lens. Functional (a
- * categorical scale), not brand copy — communities have no canon meaning, so
- * the palette only needs to be perceptually separable.
+ * Distinct functional hues for the Louvain communities lens. A categorical
+ * scale — communities carry no intrinsic meaning, so the palette only needs to
+ * be perceptually separable.
  *
  * This is the SINGLE SOURCE for the community palette: other consumers should
  * import it instead of keeping their own copy, so every surface reads
@@ -77,8 +74,8 @@ export const PERIPHERY_HEX: Record<LensTheme, string> = {
 
 /**
  * Build a simple undirected graphology graph from id-bearing nodes + endpoint
- * links. Defensive against the empty/duplicate ids that canon-promotion
- * artefacts have produced in the wild, and against self-loops / parallel edges.
+ * links. Defensive against empty/duplicate ids and against self-loops /
+ * parallel edges.
  */
 function buildGraph(nodes: LensNode[], links: LensLink[]): Graph {
 	const ids = new Set<string>();
@@ -101,11 +98,11 @@ function buildGraph(nodes: LensNode[], links: LensLink[]): Graph {
  * Minimum fraction of input nodes that must carry a numeric
  * `properties.louvainCommunity` before the communities lens trusts the server
  * precompute and skips the client-side Louvain run. Below this coverage the
- * precompute is treated as partial/absent (e.g. the #580 precompute hasn't
- * fired yet, or the scope mixes precomputed and fresh nodes) and the lens
- * falls back to computing Louvain in the browser as before. 0.6 = a clear
- * majority — enough that the missing minority rendering uncoloured is honest,
- * not enough to mix two different partitions on one canvas.
+ * precompute is treated as partial/absent (e.g. it hasn't run yet, or the
+ * scope mixes precomputed and fresh nodes) and the lens falls back to computing
+ * Louvain in the browser. 0.6 = a clear majority — enough that the missing
+ * minority rendering uncoloured is honest, not enough to mix two different
+ * partitions on one canvas.
  */
 export const LOUVAIN_PRECOMPUTE_COVERAGE_THRESHOLD = 0.6;
 
@@ -120,9 +117,9 @@ function precomputedCommunity(node: LensNode): number | null {
  *
  * Prefers the server precompute: when at least
  * LOUVAIN_PRECOMPUTE_COVERAGE_THRESHOLD of the input nodes carry a numeric
- * `properties.louvainCommunity` (written by the Louvain precompute run,
- * #580), ids come straight from that property — no client-side Louvain run.
- * Otherwise falls back to computing the partition in the browser.
+ * `properties.louvainCommunity` (written by a server-side precompute), ids come
+ * straight from that property — no client-side Louvain run. Otherwise falls
+ * back to computing the partition in the browser.
  *
  * Shared by `communityColors` (palette-maps the ids for rendering) and
  * `communitiesPartitionStats` (reads the RAW ids to judge whether the
@@ -300,7 +297,7 @@ function corePeripheryColors(
 /**
  * Compute the per-node colour overrides for a lens. Returns an EMPTY map for
  * "raw" (and whenever the graph is too sparse to read), which leaves every node
- * in its base brand styling — callers should treat an empty map as "no lens".
+ * in its base styling — callers should treat an empty map as "no lens".
  */
 export function computeLensColors(
 	lens: GraphLens,

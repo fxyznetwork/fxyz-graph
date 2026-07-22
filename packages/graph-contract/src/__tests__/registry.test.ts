@@ -1,7 +1,8 @@
 /**
- * Lens registry v1 — law tests. Every entry must be a valid LensSpec, ids
- * must be unique and match their map key, public lenses must be structurally
- * PII-safe, and label budgets must stay inside the measured 80/120/200 law.
+ * Lens registry v1 — invariant tests. Every entry must be a valid LensSpec,
+ * ids must be unique and match their map key, public lenses must be
+ * structurally safe (no operator-only kinds), and label budgets must stay
+ * inside the 80/120/200 set.
  */
 
 import { validateLensSpec } from "../lens";
@@ -19,8 +20,8 @@ describe("lens registry v1", () => {
 	});
 
 	it("registers today's real lenses and nothing speculative", () => {
-		// The fx-* family entered WITH its surface (the #971 fold: /graph?view=fx
-		// rides GraphPane) — real-or-remove holds.
+		// The fx-* family entered WITH its surface — a lens enters the catalog
+		// when its surface ships, not before.
 		expect([...KNOWN_LENS_IDS].sort()).toEqual(
 			[
 				"communities",
@@ -36,7 +37,7 @@ describe("lens registry v1", () => {
 				"fibo",
 				"org",
 				"provenance",
-				// tm #1123: the public entity-ego panel lens (entity detail pages).
+				// the public entity-ego panel lens (entity detail pages).
 				"ego",
 			].sort(),
 		);
@@ -57,13 +58,13 @@ describe("lens registry v1", () => {
 		}
 	});
 
-	it("the member kind (DID-keyed) appears in NO lens — operator lenses do not exist yet", () => {
+	it("the member kind (internally-keyed) appears in NO lens — operator lenses do not exist yet", () => {
 		for (const [, spec] of LENS_REGISTRY) {
 			expect(spec.nodeKinds).not.toContain("member");
 		}
 	});
 
-	it("label budgets stay inside the measured 80/120/200 law", () => {
+	it("label budgets stay inside the 80/120/200 set", () => {
 		for (const [, spec] of LENS_REGISTRY) {
 			expect([80, 120, 200]).toContain(spec.labelBudget);
 		}
@@ -87,7 +88,7 @@ describe("lens registry v1", () => {
 		expect(spec?.audience).toBe("public");
 	});
 
-	it("the communities lens colours BY community (#1082) with a role default", () => {
+	it("the communities lens colours BY community with a role default", () => {
 		const spec = getLensSpec("communities");
 		expect(spec).not.toBeNull();
 		const colorRules = spec?.styleRules.filter((r) => r.channel === "color");
@@ -121,7 +122,7 @@ describe("lens registry v1", () => {
 		});
 	});
 
-	it("the fibo lens is a member, fibo-kind, workbench-tier ontology map (#1103)", () => {
+	it("the fibo lens is a member, fibo-kind, workbench-tier ontology map", () => {
 		const spec = getLensSpec("fibo");
 		expect(spec).not.toBeNull();
 		expect(spec?.audience).toBe("member");
@@ -162,13 +163,13 @@ describe("lens registry v1", () => {
 		});
 	});
 
-	it("the provenance lens is a member, concept-kind, workbench-tier canon-lineage map", () => {
+	it("the provenance lens is a member, concept-kind, workbench-tier lineage map", () => {
 		const spec = getLensSpec("provenance");
 		expect(spec).not.toBeNull();
 		expect(spec?.audience).toBe("member");
 		expect(spec?.tier).toBe("workbench");
 		expect(spec?.nodeKinds).toEqual(["concept"]);
-		// The full lineage rel-type superset — BOTH writer spellings deliberately.
+		// The full lineage relationship-type set, including accepted variant spellings.
 		expect(spec?.relTypes).toEqual([
 			"SUPERSEDES",
 			"SUPERSEDED_BY",

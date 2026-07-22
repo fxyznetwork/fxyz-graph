@@ -65,9 +65,9 @@ function computeScores(
 	let next = new Array<number>(n).fill(0);
 
 	// Iterate v ← (A + I)·v, not A·v: the +I (self-reinforcement) shift breaks the
-	// ±λ oscillation plain power iteration suffers on bipartite graphs (a star, or a
-	// Concept↔Currency subgraph) while leaving the ranking unchanged on the
-	// non-bipartite graphs where plain iteration already converges.
+	// ±λ oscillation plain power iteration suffers on bipartite graphs (e.g. a
+	// star) while leaving the ranking unchanged on the non-bipartite graphs
+	// where plain iteration already converges.
 	for (let iter = 0; iter < maxIterations; iter++) {
 		for (let k = 0; k < n; k++) next[k] = v[k];
 		for (let e = 0; e < weights.length; e++) {
@@ -130,7 +130,7 @@ export const eigenvectorCentrality: Algorithm<EigenvectorParams> = {
 			min: 0,
 		},
 	},
-	venues: ["client-ts", "precomputed-cron", "server-gds"],
+	venues: ["client-ts", "precomputed-cron", "server-native"],
 	maxWorkingSet: { "client-ts": 20_000 },
 	defaultEncodingChannel: "brightness",
 	resultKind: "scores",

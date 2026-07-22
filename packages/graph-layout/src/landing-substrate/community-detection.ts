@@ -1,5 +1,5 @@
 /**
- * Community detection for the landing substrate.
+ * Community detection for the landing graph slice.
  *
  * Two-pass scheme:
  *   1. Group by `node.kind` — natural macro-communities (Currency / Concept /
@@ -7,22 +7,19 @@
  *   2. Within each macro-community, run Louvain to find sub-clusters when
  *      the kind has > MIN_FOR_LOUVAIN nodes.
  *
- * The substrate is rendered monochrome (single neutral tone). Per-kind visual
- * emphasis is driven by the active beat in `landing-vnext/scene.tsx` (e.g.
- * `currency` beat highlights Currency nodes), not by a kind→tone palette
- * mapping in this layer. The prior `KIND_TONE` (Concept→florin / Currency→
- * joule / Citation→wisdom / FI→network / Country→earth) was AI-fabricated —
- * no canon backing for kind→tone — and was removed 2026-05-07.
+ * The slice is coloured with a single neutral tone by default; a renderer can
+ * add per-kind emphasis on top (e.g. highlighting Currency nodes) rather than
+ * baking a kind→tone mapping into this layer.
  */
 
 import Graph from "graphology";
 import louvain from "graphology-communities-louvain";
 import type { SubstrateEdge, SubstrateNode, SubstrateNodeKind } from "../types";
-import type { LandingCommunity, StellarTone } from "./types";
+import type { LandingCommunity, PaletteTone } from "./types";
 
-/** Single neutral tone for the entire substrate. Beat-driven highlight in
- *  scene.tsx adds emphasis where the story calls for it. */
-const SUBSTRATE_TONE: StellarTone = "network";
+/** Single neutral tone for the entire slice. A renderer can add emphasis on
+ *  top where it wants to draw attention. */
+const SUBSTRATE_TONE: PaletteTone = "blue";
 const SUBSTRATE_COLOR = "#aec2f8";
 const SUBSTRATE_STRONG = "#546cb7";
 
@@ -55,13 +52,11 @@ export function detectCommunities({ nodes, edges }: DetectArgs): DetectResult {
 	const communities: LandingCommunity[] = [];
 	const nodeCommunity: Record<string, string> = {};
 
-	// TODO(#1003): these community ids are unversioned (no dataVersion), which
-	// @fxyz/graph-contract makeCommunityRef exists to prevent. Safe HERE only
-	// because landing community ids never leave one build's payload (scene.tsx
-	// / glossary-card.tsx key lookups from the same slice; nothing persists
-	// them). Landing slice v0 is FROZEN, so values stay; the contract-native
-	// v1 slice mints version-qualified community refs. Do NOT persist these
-	// ids (saved views, URLs) in any new consumer.
+	// NOTE: these community ids are unversioned (no dataVersion). That is safe
+	// only because landing community ids never leave one build's payload — the
+	// renderer's key lookups come from the same slice and nothing persists
+	// them. Do NOT persist these ids (saved views, URLs) in any new consumer;
+	// for a durable community reference, mint a version-qualified id upstream.
 
 	for (const [kind, kindNodes] of byKind) {
 		if (kindNodes.length < MIN_FOR_LOUVAIN) {
@@ -109,9 +104,9 @@ function louvainSubPartition(
 	const nodeIds = new Set<string>();
 	const graph = new Graph({ multi: false, type: "undirected" });
 	for (const node of kindNodes) {
-		// Defensive: source data has produced nodes with empty/duplicate ids
-		// in the wild (KG canon-promotion artefacts). Skip them rather than
-		// blowing up the whole landing slice — they collapse into community 0.
+		// Defensive: source data can contain nodes with empty/duplicate ids.
+		// Skip them rather than blowing up the whole slice — they collapse
+		// into community 0.
 		if (!node.id || nodeIds.has(node.id)) continue;
 		nodeIds.add(node.id);
 		graph.addNode(node.id);

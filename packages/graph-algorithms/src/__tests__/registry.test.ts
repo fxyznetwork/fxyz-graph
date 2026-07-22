@@ -1,7 +1,7 @@
 import {
 	createRegistry,
 	DuplicateAlgorithmError,
-	GroundingError,
+	RegistrationError,
 } from "../registry";
 import type { Algorithm } from "../types";
 
@@ -15,15 +15,15 @@ const published: Algorithm = {
 	run: async () => ({ kind: "scores", values: new Map<string, number>() }),
 };
 
-// A ƒxyz-coined metric — registration must prove its :Concept is active.
-const coined: Algorithm = {
+// A guarded algorithm — registration must be approved by the guard.
+const guarded: Algorithm = {
 	...published,
 	id: "network-r0",
-	groundingConceptId: "claim-network-r0",
+	guardKey: "network-r0",
 };
 
 describe("AlgorithmRegistry", () => {
-	it("registers a published algorithm with no grounding", () => {
+	it("registers an algorithm with no guard key", () => {
 		const r = createRegistry().register(published);
 		expect(r.has("noop")).toBe(true);
 		expect(r.size).toBe(1);
@@ -35,20 +35,20 @@ describe("AlgorithmRegistry", () => {
 		expect(() => r.register(published)).toThrow(DuplicateAlgorithmError);
 	});
 
-	it("fail-closed: a coined metric cannot register without a grounding checker", () => {
-		expect(() => createRegistry().register(coined)).toThrow(GroundingError);
+	it("fail-closed: a guarded algorithm cannot register without a guard", () => {
+		expect(() => createRegistry().register(guarded)).toThrow(RegistrationError);
 	});
 
-	it("refuses a coined metric whose :Concept is not active", () => {
-		const r = createRegistry({ groundingChecker: () => false });
-		expect(() => r.register(coined)).toThrow(GroundingError);
+	it("refuses a guarded algorithm the guard does not approve", () => {
+		const r = createRegistry({ registrationGuard: () => false });
+		expect(() => r.register(guarded)).toThrow(RegistrationError);
 	});
 
-	it("registers a coined metric whose :Concept is active", () => {
+	it("registers a guarded algorithm the guard approves", () => {
 		const r = createRegistry({
-			groundingChecker: (id) => id === "claim-network-r0",
+			registrationGuard: (key) => key === "network-r0",
 		});
-		r.register(coined);
+		r.register(guarded);
 		expect(r.has("network-r0")).toBe(true);
 	});
 

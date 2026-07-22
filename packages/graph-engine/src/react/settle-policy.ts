@@ -1,11 +1,11 @@
 /**
- * Settle policy (#1072) — pure decision machine for the GraphPane settle
- * watcher. NVL's bundled d3Force runs with alphaDecay 0, so ε-quiescence
+ * Settle policy — pure decision machine for the GraphPane settle watcher.
+ * The renderer's bundled d3Force runs with alphaDecay 0, so ε-quiescence
  * (10 stable rAF samples @ 0.01 world units, backend/nvl.ts) can trail the
- * macro-layout by ~90s of micro-jitter (prod correlation 29/281 observed
- * 95.6s, 2026-07-17). The macro structure converges in ~1-3s — waiting the
- * full jitter tail out kept labels, the settled hit-index, and the camera
- * re-sync hostage.
+ * macro-layout by a long tail of micro-jitter (observed in production to run
+ * well past a minute in some cases). The macro structure converges in ~1-3s
+ * — waiting the full jitter tail out kept labels, the settled hit-index, and
+ * the camera re-sync hostage.
  *
  * Two-phase contract:
  *  - DEADLINE ADOPTION: past SETTLE_DEADLINE_MS on a still-moving sim, adopt

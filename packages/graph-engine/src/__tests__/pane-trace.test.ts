@@ -1,5 +1,5 @@
 /**
- * pane-trace (tm #1136 diagnostic): OFF by default, armed via ?paneTrace=1 or
+ * pane-trace diagnostic: OFF by default, armed via ?paneTrace=1 or
  * the sticky localStorage flag, ring-capped, phase crumbs land even when the
  * traced body throws. Node env — window is faked per test.
  */
@@ -37,7 +37,7 @@ function ring(store: Store): string[] {
 	return raw ? (JSON.parse(raw) as string[]) : [];
 }
 
-describe("pane-trace (#1136 forensics)", () => {
+describe("pane-trace forensics", () => {
 	it("is a no-op by default — no flag, no writes, enabled=false", () => {
 		const store: Store = new Map();
 		setFakeWindow(fakeWindow("", store));

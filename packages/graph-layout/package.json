@@ -20,21 +20,6 @@
 			"types": "./dist/landing-substrate/index.d.ts",
 			"import": "./dist/landing-substrate/index.js",
 			"require": "./dist/landing-substrate/index.cjs"
-		},
-		"./public-graph-limits": {
-			"types": "./dist/public-graph-limits.d.ts",
-			"import": "./dist/public-graph-limits.js",
-			"require": "./dist/public-graph-limits.cjs"
-		},
-		"./precompute-louvain": {
-			"types": "./dist/precompute-louvain.d.ts",
-			"import": "./dist/precompute-louvain.js",
-			"require": "./dist/precompute-louvain.cjs"
-		},
-		"./workbench-edge-cache": {
-			"types": "./dist/workbench-edge-cache.d.ts",
-			"import": "./dist/workbench-edge-cache.js",
-			"require": "./dist/workbench-edge-cache.cjs"
 		}
 	},
 	"scripts": {
@@ -45,16 +30,27 @@
 		"test": "jest --passWithNoTests"
 	},
 	"keywords": [
-		"substrate",
-		"canon",
 		"graph",
 		"layout",
 		"force-directed",
-		"neo4j",
-		"multiplex"
+		"louvain",
+		"community-detection",
+		"d3-force-3d",
+		"visualization"
 	],
-	"author": "ƒxyz ℕetwork",
-	"license": "MIT",
+	"author": "fxyz network",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fxyznetwork/fxyz-graph.git"
+	},
+	"homepage": "https://github.com/fxyznetwork/fxyz-graph/tree/main/packages/graph-layout#readme",
+	"bugs": {
+		"url": "https://github.com/fxyznetwork/fxyz-graph/issues"
+	},
+	"engines": {
+		"node": ">=22"
+	},
 	"dependencies": {
 		"d3-force-3d": "^3.0.6",
 		"graphology": "^0.26.0",
@@ -76,7 +72,6 @@
 		"@types/react-dom": "^19.2.3",
 		"jest": "^30.4.2",
 		"jsdom": "^29.1.1",
-		"neo4j-driver": "^6.0.1",
 		"tsup": "^8.5.1",
 		"typescript": "^6.0.3"
 	}

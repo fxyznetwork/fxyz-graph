@@ -4,14 +4,13 @@
  * The renderer never sees an algorithm; it sees an `AlgoResult` and an
  * `EncodingChannel`. This module is the pure mapping between them: it turns a
  * result (`scores` / `communities` / `paths` / `cycles` / `derived`) into
- * concrete per-node visual instructions plus path/cycle highlights. This is the
- * GraphXR / Ogma "an algorithm writes a value, the encoder reads it" contract —
- * and it is what makes the founder's "color/size by meaning" real without the
- * renderer knowing a single algorithm name.
+ * concrete per-node visual instructions plus path/cycle highlights. The
+ * algorithm writes a value; the encoder reads it — which makes "color/size by
+ * meaning" real without the renderer knowing a single algorithm name.
  *
  * It is shipped as a SEPARATE bundle entry (`@fxyz/graph-algorithms/contract`)
  * so the visualization layer can import the encoding types WITHOUT pulling the
- * algorithm implementations. Pure; no react/three/neo4j dependency.
+ * algorithm implementations. Pure; no rendering or database dependency.
  */
 
 import type {

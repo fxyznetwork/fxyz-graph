@@ -1,16 +1,14 @@
 /**
- * Lens registry v1 (DESIGN-V2 §5/§6 — the V2-P1 "LensSpec registry v1" item).
+ * Lens registry v1.
  *
- * The CATALOG of lenses that exist as real surfaces today — real-or-remove:
- * an entry here means a member can stand on that lens right now. Speculative
- * lenses (money-map family, org lens, code lens) enter when their surface
- * ships (P2/P3), not before.
+ * The catalog of lenses that exist as real surfaces. An entry here is a lens a
+ * member can stand on; a lens enters this catalog when its surface ships, not
+ * before.
  *
  * The registry is the shared vocabulary for lens IDs: saved views validate
- * their `lens` field against it, /graph seeds from it, and the P2 engine
- * lens runtime (incremental styling deltas) will consume the styleRules.
- * Style rules recorded here are the definitional minimum for each lens —
- * the P2 runtime is the enforcement point, and deepening them is P2 work.
+ * their `lens` field against it, the graph surface seeds from it, and the
+ * engine lens runtime (incremental styling deltas) consumes the styleRules.
+ * Style rules recorded here are the definitional minimum for each lens.
  */
 
 import type { LensSpec } from "./lens";
@@ -21,14 +19,14 @@ import { NODE_KINDS, type NodeKind } from "./refs";
 export const LENS_REGISTRY_VERSION = 1;
 
 /**
- * Label budgets are LAW (engine law 6, fair-run measured): 80/120/200 by
- * LOD depth — never more than the overlay can hold at 60fps.
+ * Label budgets by level-of-detail depth: 80/120/200 — never more than the
+ * overlay can hold at 60fps.
  */
 const LABEL_BUDGETS = { far: 80, mid: 120, near: 200 } as const;
 
 /**
- * The member workbench renders every member-safe kind. `member:` (operator
- * DID identity) and `code:` (graphify lens family, own surface) stay out.
+ * Node kinds safe for member-audience, workbench-tier lenses. `member`
+ * (internal person identity) and `code` (its own surface) stay out.
  */
 const WORKBENCH_KINDS: NodeKind[] = NODE_KINDS.filter(
 	(kind) => kind !== "member" && kind !== "code",
@@ -36,33 +34,33 @@ const WORKBENCH_KINDS: NodeKind[] = NODE_KINDS.filter(
 
 const ENTRIES: LensSpec[] = [
 	{
-		// /graph default — the unstyled member workbench view.
+		// Default — the unstyled workbench-tier view.
 		id: "raw",
 		title: "Raw",
 		audience: "member",
 		seed: { kind: "scope", scope: "network" },
 		nodeKinds: WORKBENCH_KINDS,
-		relTypes: [], // workbench shows all served rel-types; no lens filter
-		// Degree → size (area-true, 6..48): a 10k point cloud with uniform
-		// discs has no visual hierarchy — hubs must read as hubs (#1095).
+		relTypes: [], // workbench shows all served relationship types; no lens filter
+		// Degree → size (area-true, 6..48): a large point cloud with uniform
+		// discs has no visual hierarchy — hubs must read as hubs.
 		styleRules: [{ source: "degree", channel: "size" }],
 		legend: [{ encoding: "size", label: "Size = connections" }],
 		labelBudget: LABEL_BUDGETS.near,
 		tier: "workbench",
 	},
 	{
-		// /graph?lens=communities — Louvain communities coloring (#580 tier).
+		// Louvain communities coloring.
 		id: "communities",
 		title: "Communities",
 		audience: "member",
 		seed: { kind: "scope", scope: "network" },
 		nodeKinds: WORKBENCH_KINDS,
 		relTypes: [],
-		// Categorical community coloring (#1082): each node's version-qualified
-		// community ref maps deterministically to a palette hue (engine
-		// applyStyleRules `community` source). The topology-role rule stays as the
-		// no-community DEFAULT — nodes the community assignment doesn't cover keep
-		// the lens's topology accent rather than going bare.
+		// Categorical community coloring: each node's version-qualified community
+		// ref maps deterministically to a palette hue (engine applyStyleRules
+		// `community` source). The topology-role rule stays as the no-community
+		// DEFAULT — nodes the community assignment doesn't cover keep the lens's
+		// topology accent rather than going bare.
 		styleRules: [
 			{ source: "prop:louvainCommunity", channel: "color", role: "topology" },
 			{ source: "community", channel: "color" },
@@ -72,7 +70,7 @@ const ENTRIES: LensSpec[] = [
 		tier: "workbench",
 	},
 	{
-		// /graph?lens=core-periphery — degree-coreness emphasis.
+		// Degree-coreness emphasis.
 		id: "core-periphery",
 		title: "Core / periphery",
 		audience: "member",
@@ -86,10 +84,9 @@ const ENTRIES: LensSpec[] = [
 		labelBudget: LABEL_BUDGETS.near,
 		tier: "workbench",
 	},
-	// The FX lens family (/graph?view=fx — folded onto GraphPane, tm #971).
-	// Enter WITH their surface (real-or-remove): each id is one algorithm
-	// source of the member FX workbench. Degree drives area-true size (the
-	// old hand-rolled 14+deg·2.2 sizing, now through the one style pipeline).
+	// The FX lens family — each id is one algorithm source for the FX scope's
+	// member-audience, workbench-tier lenses. Degree drives area-true size
+	// through the one style pipeline.
 	{
 		id: "fx-correlation",
 		title: "FX correlation",
@@ -151,8 +148,8 @@ const ENTRIES: LensSpec[] = [
 		tier: "workbench",
 	},
 	{
-		// Public /graph Overview — the precomputed :GraphCommunity summary tier
-		// (134 positioned super-nodes), never the raw graph.
+		// Public network overview — a precomputed community-summary tier of
+		// positioned super-nodes, never the raw graph.
 		id: "public-overview",
 		title: "Network overview",
 		audience: "public",
@@ -160,10 +157,9 @@ const ENTRIES: LensSpec[] = [
 		nodeKinds: ["community"],
 		relTypes: ["GRAPH_COMMUNITY_LINK"],
 		// Community size rides measures.count (contract nodes carry no props
-		// bag — a `prop:` source can never resolve against GraphNodeV1; fixed
-		// when the P2 overview route landed). Color binds each community's
-		// own data role (dominantLabel → DataRole, mapped by the overview
-		// route) to the locked --fx-role-* accents — role, never route.
+		// bag, so a `prop:` source can never resolve against GraphNodeV1).
+		// Color binds each community's own data role (from its dominant label)
+		// to the role-based accents — role, never route.
 		styleRules: [
 			{ source: "count", channel: "size" },
 			{ source: "prop:roles", channel: "color" },
@@ -178,19 +174,16 @@ const ENTRIES: LensSpec[] = [
 		],
 		labelBudget: LABEL_BUDGETS.far,
 		// Label salience rides count too: the biggest communities get the
-		// budget, not the highest-degree ones (degree ranking surfaced
-		// "… cluster" fallbacks over exemplar-named majors).
+		// budget, not the highest-degree ones.
 		labelRankMeasure: "count",
 		tier: "panel",
 	},
 	{
-		// /graph?scope=fibo — the FIBO financial ontology as a first-class scope
-		// on the member workbench (tm #1103, founder mandate "FIBO is the main").
-		// :FiboClass hierarchy: classes as nodes, SUBCLASS_OF as edges. Member
-		// lens (raw/communities kin), workbench tier — served through the same
-		// buildPayload choke point (/api/graph/fibo). Role-coloured (every class
-		// is financial-ontology → money) + degree-sized, exactly the market map's
-		// visual grammar. Real-or-remove: enters WITH its /api/graph/fibo surface.
+		// The FIBO financial ontology as a first-class scope for member-audience,
+		// workbench-tier lenses. Financial-ontology classes as nodes, SUBCLASS_OF
+		// as edges. Served through the shared buildPayload path. Role-coloured
+		// (every class is financial-ontology → money) + degree-sized, exactly the
+		// market map's visual grammar.
 		id: "fibo",
 		title: "FIBO ontology",
 		audience: "member",
@@ -209,21 +202,15 @@ const ENTRIES: LensSpec[] = [
 		tier: "workbench",
 	},
 	{
-		// /graph?scope=org — the org's Holacracy governance structure as a
-		// first-class scope on the member workbench (graph-refoundation
-		// programme, "one graph, many lenses"), the fibo scope's twin. The
-		// :Circle hierarchy + :HolacracyRole nodes + the :Domain objects they
-		// own/are accountable for (mig 123/124, tm #1105): circles/roles/domains
-		// as nodes, PARENT_OF + HAS_ROLE + OWNS_DOMAIN + ACCOUNTABLE_FOR as edges,
-		// aggregate distinct member/filler counts as the count measure (PII LAW:
-		// counts only, never identities — domains carry no such aggregate and
-		// stay count:null, never invented). Member
-		// lens, workbench tier — served through the same buildPayload choke point
-		// (/api/graph/org, member/no-store posture: governance instances are
-		// member-gated across the estate). Governance-role coloured (every node
-		// is the org's governance structure → governance) + degree-sized,
-		// mirroring the fibo lens's grammar. Real-or-remove: enters WITH its
-		// /api/graph/org surface.
+		// The organisation's governance structure as a first-class scope for
+		// member-audience, workbench-tier lenses, the fibo scope's twin. Circles +
+		// roles + the domains they own or are accountable for: circles/roles/domains
+		// as nodes, PARENT_OF + HAS_ROLE + OWNS_DOMAIN + ACCOUNTABLE_FOR as edges.
+		// Aggregate distinct member/filler counts as the count measure — counts
+		// only, never identities; domains carry no such aggregate and stay
+		// count:null, never invented. Served through the shared buildPayload path.
+		// Governance-role coloured + degree-sized, mirroring the fibo lens's
+		// grammar.
 		id: "org",
 		title: "Org structure",
 		audience: "member",
@@ -242,20 +229,11 @@ const ENTRIES: LensSpec[] = [
 		tier: "workbench",
 	},
 	{
-		// /knowledge concept detail — a single :Concept's canon lineage as a
-		// seeded scope on the member workbench (graph-refoundation programme, "one
-		// graph, many lenses"), the fibo/org scopes' canon twin. Concepts as
-		// nodes, the lineage rel-type SUPERSET (both writer spellings deliberately
-		// — the live graph mixes vocabularies) as edges, degree drives size, the
-		// seed at the origin. A SEEDED/route-ish lens: the actual seed is the
-		// per-request conceptId, declared here as a scope seed exactly like the
-		// fx-route family (a ref seed cannot bake in a dynamic conceptId). Member
-		// lens (canon lineage surfaces retired/contested predecessors — member-
-		// surface data), workbench tier — served through the same buildPayload
-		// choke point (/api/graph/provenance, member/no-store posture).
-		// Governance-adjacent knowledge → topology role (roleForLabel), degree-
-		// sized, mirroring the fibo/org grammar. Real-or-remove: enters WITH its
-		// /api/graph/provenance surface + the /knowledge Lineage panel.
+		// A single node's lineage as a seeded scope: the seed node at the origin,
+		// lineage relationship types as edges, degree driving size. A seeded lens —
+		// the actual seed is supplied per request (a ref seed cannot bake in a
+		// dynamic id, so it is declared here as a scope seed). Lineage maps to the
+		// topology role, degree-sized.
 		id: "provenance",
 		title: "Provenance",
 		audience: "member",
@@ -277,17 +255,16 @@ const ENTRIES: LensSpec[] = [
 		],
 		legend: [
 			{ encoding: "size", label: "Size = connections" },
-			{ encoding: "role", role: "topology", label: "Canon lineage" },
+			{ encoding: "role", role: "topology", label: "Lineage" },
 		],
 		labelBudget: LABEL_BUDGETS.near,
 		tier: "workbench",
 	},
 	{
-		// Public market map (V2-P3 money-map face): currency/market structure
-		// coloured by DATA ROLE, never route — each node binds its own role
-		// (currencies → money) to the locked --fx-role-* accents, degree drives
-		// area-true size. Public audience, so the operator-only member kind is
-		// out (real-or-remove; the money-map heroes deepen this in P3).
+		// Public market map: currency/market structure coloured by DATA ROLE,
+		// never route — each node binds its own role (currencies → money) to the
+		// role-based accents, degree drives area-true size. Public audience, so
+		// the operator-only member kind is out.
 		id: "market",
 		title: "Market map",
 		audience: "public",
@@ -307,12 +284,11 @@ const ENTRIES: LensSpec[] = [
 		tier: "panel",
 	},
 	{
-		// Public entity ego (tm #1123): the entity-detail panel lens — one seed
+		// Public entity ego: the entity-detail panel lens — one seed
 		// (cbdc/token/fibo/partner ref) plus its typed, allowlisted neighborhood
 		// as a radial tree. Small graphs by design → near label budget (label
 		// everything). Token seeds may be fxyz's own tokens, so ALL four layers
-		// are declared — display side by side, never converted (token-layer
-		// distinction).
+		// are declared — displayed side by side, never converted.
 		id: "ego",
 		title: "Connections",
 		audience: "public",
@@ -348,7 +324,7 @@ const ENTRIES: LensSpec[] = [
 		],
 		labelBudget: LABEL_BUDGETS.near,
 		tier: "panel",
-		allowedTokenLayers: ["fxyz-position", "florin-settlement", "joule", "how"],
+		allowedTokenLayers: ["position", "settlement", "work", "knowledge"],
 	},
 ];
 

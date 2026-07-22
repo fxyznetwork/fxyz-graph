@@ -12,6 +12,6 @@ export { runForceLayout } from "./force-layout";
 export type {
 	LandingCommunity,
 	LandingSubstrateSlice,
+	PaletteTone,
 	PositionedNode,
-	StellarTone,
 } from "./types";
