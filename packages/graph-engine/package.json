@@ -1,0 +1,65 @@
+{
+	"name": "@fxyz/graph-engine",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "Graph-engine — the headless graph controller. Incremental ingest→diff→apply, server-positions-first layout policy, id-keyed identity/selection stores, throttled spatial-index interaction, budgeted labels, a lens runtime with incremental styling deltas, and renderers as swappable BACKENDS behind an observable-API contract (a stub backend ships in this package; an NVL adapter is wired via an injected constructor; other renderers slot in the same way). A suite of interaction-law acceptance tests ships in this package — features come after laws.",
+	"main": "dist/index.cjs",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist/**"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./react": {
+			"types": "./dist/react/index.d.ts",
+			"import": "./dist/react/index.js",
+			"require": "./dist/react/index.cjs"
+		}
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
+		"test": "jest --passWithNoTests"
+	},
+	"keywords": [
+		"graph",
+		"engine",
+		"headless",
+		"renderer",
+		"backend",
+		"nvl",
+		"lens"
+	],
+	"author": "ƒxyz ℕetwork",
+	"license": "MIT",
+	"dependencies": {
+		"@fxyz/graph-contract": "workspace:*",
+		"@fxyz/graph-layout": "workspace:*"
+	},
+	"peerDependencies": {
+		"react": "^19.2.6"
+	},
+	"peerDependenciesMeta": {
+		"react": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@swc/core": "^1.15.40",
+		"@swc/jest": "^0.2.39",
+		"@types/jest": "^30.0.0",
+		"@types/node": "^22",
+		"@types/react": "^19.2.15",
+		"jest": "^30.4.2",
+		"tsup": "^8.5.1",
+		"typescript": "^6.0.3"
+	}
+}

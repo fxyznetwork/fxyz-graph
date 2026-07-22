@@ -1,0 +1,47 @@
+{
+	"name": "@fxyz/graph-contract",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "Graph-contract — the identity/payload contract every graph layer signs. Audience-scoped GraphRef ids, id-keyed positions, versioned tier payloads, closed honesty enums (provenance · MeasureKind · settlementState · tokenLayer), and a single per-audience serializer choke point. Zero runtime dependencies; importable by server resolvers, the graph engine, and any other rendering layer alike. Nothing above this contract may fork node identity again.",
+	"main": "dist/index.cjs",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist/**"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		}
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
+		"test": "jest --passWithNoTests"
+	},
+	"keywords": [
+		"graph",
+		"contract",
+		"identity",
+		"payload",
+		"serializer",
+		"provenance",
+		"lens"
+	],
+	"author": "ƒxyz ℕetwork",
+	"license": "MIT",
+	"devDependencies": {
+		"@swc/core": "^1.15.40",
+		"@swc/jest": "^0.2.39",
+		"@types/jest": "^30.0.0",
+		"@types/node": "^22",
+		"jest": "^30.4.2",
+		"tsup": "^8.5.1",
+		"typescript": "^6.0.3"
+	}
+}

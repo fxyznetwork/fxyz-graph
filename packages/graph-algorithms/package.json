@@ -1,0 +1,54 @@
+{
+	"name": "@fxyz/graph-algorithms",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "Graph-algorithms — the first-class, venue-agnostic algorithm layer for ƒxyz. One typed registry where FX algorithms (routing, arbitrage) and graph algorithms (centrality, community, pathfinding) are siblings under a uniform run(workingSet, params) => Promise<AlgoResult> contract. Pure + dependency-light so it is importable by BOTH the server resolver and the client engine.",
+	"main": "dist/index.cjs",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist/**"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./contract": {
+			"types": "./dist/contract.d.ts",
+			"import": "./dist/contract.js",
+			"require": "./dist/contract.cjs"
+		}
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
+		"test": "jest --passWithNoTests"
+	},
+	"keywords": [
+		"graph",
+		"algorithms",
+		"centrality",
+		"community",
+		"pathfinding",
+		"arbitrage",
+		"routing",
+		"registry",
+		"venue"
+	],
+	"author": "ƒxyz ℕetwork",
+	"license": "MIT",
+	"devDependencies": {
+		"@swc/core": "^1.15.40",
+		"@swc/jest": "^0.2.39",
+		"@types/jest": "^30.0.0",
+		"@types/node": "^22",
+		"jest": "^30.4.2",
+		"tsup": "^8.5.1",
+		"typescript": "^6.0.3"
+	}
+}

@@ -1,0 +1,83 @@
+{
+	"name": "@fxyz/graph-layout",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "Graph-layout — d3-force-3d positioning, Louvain community detection, and the landing-slice builder for a client-provided graph dataset.",
+	"main": "dist/index.cjs",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist/**"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./landing-substrate": {
+			"types": "./dist/landing-substrate/index.d.ts",
+			"import": "./dist/landing-substrate/index.js",
+			"require": "./dist/landing-substrate/index.cjs"
+		},
+		"./public-graph-limits": {
+			"types": "./dist/public-graph-limits.d.ts",
+			"import": "./dist/public-graph-limits.js",
+			"require": "./dist/public-graph-limits.cjs"
+		},
+		"./precompute-louvain": {
+			"types": "./dist/precompute-louvain.d.ts",
+			"import": "./dist/precompute-louvain.js",
+			"require": "./dist/precompute-louvain.cjs"
+		},
+		"./workbench-edge-cache": {
+			"types": "./dist/workbench-edge-cache.d.ts",
+			"import": "./dist/workbench-edge-cache.js",
+			"require": "./dist/workbench-edge-cache.cjs"
+		}
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
+		"test": "jest --passWithNoTests"
+	},
+	"keywords": [
+		"substrate",
+		"canon",
+		"graph",
+		"layout",
+		"force-directed",
+		"neo4j",
+		"multiplex"
+	],
+	"author": "ƒxyz ℕetwork",
+	"license": "MIT",
+	"dependencies": {
+		"d3-force-3d": "^3.0.6",
+		"graphology": "^0.26.0",
+		"graphology-communities-louvain": "^2.0.2"
+	},
+	"peerDependencies": {
+		"react": "^19.2.6",
+		"react-dom": "^19.2.6"
+	},
+	"devDependencies": {
+		"@fxyz/graph-contract": "workspace:*",
+		"@swc/core": "^1.15.40",
+		"@swc/jest": "^0.2.39",
+		"@testing-library/jest-dom": "^6.9.1",
+		"@testing-library/react": "^16.3.2",
+		"@types/jest": "^30.0.0",
+		"@types/node": "^22",
+		"@types/react": "^19.2.15",
+		"@types/react-dom": "^19.2.3",
+		"jest": "^30.4.2",
+		"jsdom": "^29.1.1",
+		"neo4j-driver": "^6.0.1",
+		"tsup": "^8.5.1",
+		"typescript": "^6.0.3"
+	}
+}
